@@ -3,9 +3,10 @@ import './App.css'
 import Game from './components/Game'
 import Menu from './components/Menu'
 import Stats from './components/Stats'
+import Admin from './components/Admin'
 
 function App() {
-  const [currentView, setCurrentView] = useState('menu') // menu, daily, practice, stats
+  const [currentView, setCurrentView] = useState('menu') // menu, daily, practice, stats, admin
   const [gameMode, setGameMode] = useState(null)
 
   const startGame = (mode) => {
@@ -22,6 +23,10 @@ function App() {
     setCurrentView('stats')
   }
 
+  const showAdmin = () => {
+    setCurrentView('admin')
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -30,7 +35,7 @@ function App() {
       </header>
 
       {currentView === 'menu' && (
-        <Menu onStartGame={startGame} onShowStats={showStats} />
+        <Menu onStartGame={startGame} onShowStats={showStats} onShowAdmin={showAdmin} />
       )}
 
       {(currentView === 'daily' || currentView === 'practice') && (
@@ -39,6 +44,10 @@ function App() {
 
       {currentView === 'stats' && (
         <Stats onBack={backToMenu} />
+      )}
+
+      {currentView === 'admin' && (
+        <Admin onBack={backToMenu} />
       )}
 
       <footer className="app-footer">

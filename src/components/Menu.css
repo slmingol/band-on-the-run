@@ -45,6 +45,18 @@
   background: linear-gradient(135deg, var(--button-hover) 0%, #1db954 100%);
 }
 
+.menu-button.secondary {
+  background-color: #6c757d;
+  font-size: 1rem;
+  padding: 1rem 1.5rem;
+  opacity: 0.8;
+}
+
+.menu-button.secondary:hover {
+  background-color: #5a6268;
+  opacity: 1;
+}
+
 .how-to-play {
   background-color: var(--card-bg);
   padding: 2rem;

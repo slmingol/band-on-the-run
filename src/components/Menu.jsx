@@ -1,6 +1,6 @@
 import './Menu.css'
 
-function Menu({ onStartGame, onShowStats }) {
+function Menu({ onStartGame, onShowStats, onShowAdmin }) {
   return (
     <div className="menu">
       <div className="menu-container">
@@ -9,7 +9,7 @@ function Menu({ onStartGame, onShowStats }) {
             className="menu-button primary"
             onClick={() => onStartGame('daily')}
           >
-            🎯 Daily Bandle
+            🎯 Daily Challenge
           </button>
           
           <button 
@@ -24,6 +24,13 @@ function Menu({ onStartGame, onShowStats }) {
             onClick={onShowStats}
           >
             📊 Your Stats
+          </button>
+          
+          <button 
+            className="menu-button secondary"
+            onClick={onShowAdmin}
+          >
+            ⚙️ Admin
           </button>
         </div>
 

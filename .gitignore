@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Environment Variables
+.env
+.env.local
+
+# Spotify credentials - DO NOT COMMIT
+VITE_SPOTIFY_CLIENT_ID
+VITE_SPOTIFY_CLIENT_SECRET

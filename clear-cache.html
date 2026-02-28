@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Clear Bandle Cache</title>
+    <style>
+        body { font-family: system-ui; text-align: center; padding: 50px; }
+        h1 { color: #2ecc71; }
+    </style>
+</head>
+<body>
+    <h1>Clearing Bandle Cache...</h1>
+    <script>
+        localStorage.removeItem('bandle_enriched_songs');
+        localStorage.removeItem('bandle_cache_expiry');
+        console.log('✅ Cache cleared!');
+        document.body.innerHTML = '<h1>✅ Cache Cleared!</h1><p>Close this tab and refresh your game.</p>';
+    </script>
+</body>
+</html>
