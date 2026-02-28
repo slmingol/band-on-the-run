@@ -1,0 +1,57 @@
+name: Cleanup Docker Images
+
+on:
+  schedule:
+    # Run daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      keep_count:
+        description: 'Minimum number of versions to keep'
+        required: false
+        default: '5'
+        type: number
+      untagged_only:
+        description: 'Delete only untagged versions'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  cleanup-untagged:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    
+    steps:
+      - name: Cleanup untagged Docker images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'band-on-the-run'
+          package-type: 'container'
+          min-versions-to-keep: ${{ inputs.keep_count || 5 }}
+          delete-only-untagged-versions: ${{ inputs.untagged_only || true }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup-old-tags:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.untagged_only == false || github.event_name == 'schedule' }}
+    permissions:
+      packages: write
+      contents: read
+    
+    steps:
+      - name: Cleanup old tagged images (except latest, semver tags)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'band-on-the-run'
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: false
+          ignore-versions: '^(latest|v?\\d+\\.\\d+\\.\\d+)$'
+          token: ${{ secrets.GITHUB_TOKEN }}

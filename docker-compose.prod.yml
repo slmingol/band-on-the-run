@@ -1,0 +1,7 @@
+services:
+  band-on-the-run:
+    image: ghcr.io/slmingol/band-on-the-run:latest
+    container_name: band-on-the-run
+    ports:
+      - "3000:80"
+    restart: unless-stopped

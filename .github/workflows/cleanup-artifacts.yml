@@ -1,0 +1,103 @@
+name: Cleanup Release Artifacts
+
+on:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      days_old:
+        description: 'Delete artifacts older than this many days'
+        required: false
+        default: '7'
+        type: number
+      dry_run:
+        description: 'Dry run (do not actually delete)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  cleanup-workflow-runs:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    
+    steps:
+      - name: Cleanup old workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: ${{ inputs.days_old || 7 }}
+          keep_minimum_runs: 3
+
+  cleanup-artifacts:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    
+    steps:
+      - name: Cleanup old artifacts
+        uses: c-hive/gha-remove-artifacts@v1
+        with:
+          age: '${{ inputs.days_old || 7 }} days'
+          skip-recent: 3
+
+  cleanup-docker-images:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    
+    steps:
+      - name: Cleanup old Docker images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'band-on-the-run'
+          package-type: 'container'
+          min-versions-to-keep: 5
+          delete-only-untagged-versions: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup-cache:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Cleanup old caches
+        run: |
+          echo "Cleaning up caches older than 7 days..."
+          gh extension install actions/gh-actions-cache
+          
+          REPO=${{ github.repository }}
+          BRANCH="refs/heads/main"
+          
+          # Get cache list
+          cacheKeysForPR=$(gh actions-cache list -R $REPO -B $BRANCH | cut -f 1)
+          
+          # Set max cache age (7 days)
+          max_age_seconds=$((7 * 24 * 60 * 60))
+          current_time=$(date +%s)
+          
+          for cacheKey in $cacheKeysForPR; do
+            echo "Evaluating cache: $cacheKey"
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "DRY RUN: Would delete cache $cacheKey"
+            else
+              gh actions-cache delete $cacheKey -R $REPO -B $BRANCH --confirm || true
+            fi
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
