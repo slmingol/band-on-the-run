@@ -81,8 +81,8 @@ const BASE_SONGS = [
 
 // Cache for Spotify-enriched songs
 let ENRICHED_SONGS = null
-const ENRICHED_CACHE_KEY = 'bandle_enriched_songs'
-const CACHE_EXPIRY_KEY = 'bandle_cache_expiry'
+const ENRICHED_CACHE_KEY = 'band_on_the_run_enriched_songs'
+const CACHE_EXPIRY_KEY = 'band_on_the_run_cache_expiry'
 const CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours
 
 // Get or create enriched songs with Spotify data
@@ -173,8 +173,8 @@ export function clearSpotifyCache() {
 }
 
 // LocalStorage keys
-const STATS_KEY = 'bandle_stats'
-const DAILY_KEY = 'bandle_daily'
+const STATS_KEY = 'band_on_the_run_stats'
+const DAILY_KEY = 'band_on_the_run_daily'
 
 // Get current stats
 export function getStats() {

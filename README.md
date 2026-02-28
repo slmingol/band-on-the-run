@@ -49,7 +49,7 @@ npm run preview
 ## Project Structure
 
 \`\`\`
-bandle-clone/
+band-on-the-run/
 ├── src/
 │   ├── components/
 │   │   ├── Game.jsx          # Main game component

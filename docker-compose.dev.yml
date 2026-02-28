@@ -1,5 +1,5 @@
 services:
-  bandle-dev:
+  band-on-the-run-dev:
     build:
       context: .
       dockerfile: Dockerfile.dev

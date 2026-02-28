@@ -13,8 +13,8 @@ function Admin({ onBack }) {
 
   const handleClearStats = () => {
     if (confirm('Are you sure you want to clear all stats? This cannot be undone.')) {
-      localStorage.removeItem('bandle_stats')
-      localStorage.removeItem('bandle_daily')
+      localStorage.removeItem('band_on_the_run_stats')
+      localStorage.removeItem('band_on_the_run_daily')
       setMessage('✅ Stats cleared!')
       setTimeout(() => setMessage(''), 3000)
     }
@@ -56,9 +56,9 @@ function Admin({ onBack }) {
 
         <div className="admin-info">
           <h3>Debug Info</h3>
-          <p>Cache Items: {localStorage.getItem('bandle_enriched_songs') ? 'Present' : 'None'}</p>
-          <p>Stats: {localStorage.getItem('bandle_stats') ? 'Present' : 'None'}</p>
-          <p>Daily Result: {localStorage.getItem('bandle_daily') ? 'Present' : 'None'}</p>
+          <p>Cache Items: {localStorage.getItem('band_on_the_run_enriched_songs') ? 'Present' : 'None'}</p>
+          <p>Stats: {localStorage.getItem('band_on_the_run_stats') ? 'Present' : 'None'}</p>
+          <p>Daily Result: {localStorage.getItem('band_on_the_run_daily') ? 'Present' : 'None'}</p>
         </div>
       </div>
     </div>

@@ -36,7 +36,7 @@
 Create a `.env` file:
 
 ```bash
-cd /Users/smingolelli/dev/projects/bandle-clone
+cd /Users/smingolelli/dev/projects/band-on-the-run
 cp .env.example .env
 ```
 

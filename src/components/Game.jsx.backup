@@ -106,7 +106,7 @@ function Game({ mode, onBack, onShowStats }) {
 
   const shareResult = () => {
     const instrumentEmojis = currentSong.instruments.slice(0, currentInstrument + 1).map(() => '🎵').join('')
-    const result = `Bandle ${mode === 'daily' ? '🎯' : '🎮'}\n` +
+    const result = `Band on the Run ${mode === 'daily' ? '🎯' : '🎮'}\n` +
                    `${hasWon ? '✅' : '❌'} ${guesses.length}/${maxInstruments} attempts\n` +
                    `${instrumentEmojis}\n` +
                    `${window.location.href}`
@@ -124,7 +124,7 @@ function Game({ mode, onBack, onShowStats }) {
       <div className="game-container">
         <div className="game-header">
           <button onClick={onBack} className="back-button">← Back</button>
-          <h2>{mode === 'daily' ? '🎯 Daily Bandle' : '🎮 Practice Mode'}</h2>
+          <h2>{mode === 'daily' ? '🎯 Daily Band on the Run' : '🎮 Practice Mode'}</h2>
         </div>
 
         <div className="instruments-display">

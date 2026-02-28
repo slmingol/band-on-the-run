@@ -30,7 +30,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🎵 Bandle</h1>
+        <h1>🎵 Band on the Run</h1>
         <p className="tagline">Guess the song, one instrument at a time!</p>
       </header>
 
