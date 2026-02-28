@@ -1,6 +1,6 @@
-# 🎵 Bandle Clone
+# 🎵 Band on the Run
 
-A music guessing game inspired by Bandle.app. Guess the song one instrument at a time!
+A music guessing game where you guess the song one instrument at a time!
 
 ## Features
 
@@ -113,5 +113,5 @@ MIT
 
 ## Acknowledgments
 
-- Inspired by [Bandle.app](https://bandle.app)
-- Part of the daily game genre including Wordle, Heardle, etc.
+- Inspired by music guessing games
+- Part of the daily puzzle game genre including Wordle, Heardle, and similar games
