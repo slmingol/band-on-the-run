@@ -3,7 +3,7 @@ services:
     build: .
     container_name: band-frontend
     ports:
-      - "3000:80"
+      - "3434:80"
     volumes:
       - ./public/audio/stems:/usr/share/nginx/html/audio/stems:ro
     restart: unless-stopped
@@ -14,7 +14,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: band-backend
     ports:
-      - "3001:3001"
+      - "3435:3001"
     volumes:
       - ./public/audio:/app/public/audio
       - ./server:/app/server:ro

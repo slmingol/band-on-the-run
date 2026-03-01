@@ -3,7 +3,7 @@ services:
     image: ghcr.io/slmingol/band-on-the-run:latest
     container_name: band-frontend-prod
     ports:
-      - "3000:80"
+      - "3434:80"
     volumes:
       - ./public/audio/stems:/usr/share/nginx/html/audio/stems:ro
     restart: unless-stopped
@@ -12,7 +12,7 @@ services:
     image: ghcr.io/slmingol/band-on-the-run-backend:latest
     container_name: band-backend-prod
     ports:
-      - "3001:3001"
+      - "3435:3001"
     volumes:
       - ./public/audio:/app/public/audio
     environment:

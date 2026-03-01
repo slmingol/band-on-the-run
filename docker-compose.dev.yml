@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: band-frontend-dev
     ports:
-      - "5173:5173"
+      - "3434:5173"
     volumes:
       - .:/app
       - /app/node_modules
@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: band-backend-dev
     ports:
-      - "3001:3001"
+      - "3435:3001"
     volumes:
       - ./server:/app/server
       - ./public/audio:/app/public/audio
