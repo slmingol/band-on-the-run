@@ -29,10 +29,19 @@ jobs:
       contents: read
     
     steps:
-      - name: Cleanup untagged Docker images
+      - name: Cleanup untagged frontend images
         uses: actions/delete-package-versions@v5
         with:
           package-name: 'band-on-the-run'
+          package-type: 'container'
+          min-versions-to-keep: ${{ inputs.keep_count || 5 }}
+          delete-only-untagged-versions: ${{ inputs.untagged_only || true }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup untagged backend images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'band-on-the-run-backend'
           package-type: 'container'
           min-versions-to-keep: ${{ inputs.keep_count || 5 }}
           delete-only-untagged-versions: ${{ inputs.untagged_only || true }}
@@ -46,10 +55,20 @@ jobs:
       contents: read
     
     steps:
-      - name: Cleanup old tagged images (except latest, semver tags)
+      - name: Cleanup old frontend tagged images (except latest, semver tags)
         uses: actions/delete-package-versions@v5
         with:
           package-name: 'band-on-the-run'
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: false
+          ignore-versions: '^(latest|v?\\d+\\.\\d+\\.\\d+)$'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup old backend tagged images (except latest, semver tags)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'band-on-the-run-backend'
           package-type: 'container'
           min-versions-to-keep: 3
           delete-only-untagged-versions: false

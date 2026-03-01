@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production
+
+# Copy server code
+COPY server ./server
+
+# Create directory for audio files
+RUN mkdir -p public/audio/stems
+
+# Expose backend port
+EXPOSE 3001
+
+# Start the server
+CMD ["node", "server/index.js"]

@@ -1,8 +1,23 @@
 services:
-  band-on-the-run:
+  frontend:
     build: .
+    container_name: band-frontend
     ports:
       - "3000:80"
     volumes:
-      - ./public/audio/stems:/app/public/audio/stems:ro
+      - ./public/audio/stems:/usr/share/nginx/html/audio/stems:ro
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: band-backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./public/audio:/app/public/audio
+      - ./server:/app/server:ro
+    environment:
+      - NODE_ENV=production
     restart: unless-stopped
