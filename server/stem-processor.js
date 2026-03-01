@@ -196,9 +196,19 @@ async function searchItunes(title, artist, retryCount = 0) {
     
     throw new Error(`No preview found for ${title} by ${artist}`)
   } catch (error) {
-    if (error.message === 'RATE_LIMIT') {
+    // Handle network errors (DNS, timeout, connection refused, etc.)
+    const isNetworkError = 
+      error.code === 'ENOTFOUND' || 
+      error.code === 'ETIMEDOUT' || 
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ECONNRESET' ||
+      error.message?.includes('fetch failed') ||
+      error.message?.includes('network')
+    
+    if (error.message === 'RATE_LIMIT' || isNetworkError) {
       if (retryCount >= maxRetries) {
-        throw new Error(`iTunes rate limit persists after ${maxRetries} retries - giving up on this song`)
+        const reason = isNetworkError ? 'network errors' : 'iTunes rate limit'
+        throw new Error(`${reason} persist after ${maxRetries} retries - giving up on this song`)
       }
       
       // Check for cancellation before retrying
@@ -209,7 +219,8 @@ async function searchItunes(title, artist, retryCount = 0) {
       // Exponential backoff capped at 300 seconds (5 minutes)
       const baseWait = Math.pow(2, Math.min(retryCount, 6)) * 5000
       const waitTime = Math.min(baseWait, 300000) // Max 300 second wait
-      const statusMsg = `⏳ iTunes rate limit - waiting ${waitTime/1000}s (retry ${retryCount + 1}/${maxRetries})`
+      const reason = isNetworkError ? `Network error (${error.code || 'unknown'})` : 'iTunes rate limit'
+      const statusMsg = `⏳ ${reason} - waiting ${waitTime/1000}s (retry ${retryCount + 1}/${maxRetries})`
       console.log(statusMsg)
       
       // Update state with retry status
@@ -267,15 +278,26 @@ async function downloadAudio(url, title, artist, retryCount = 0) {
     
     return outputPath
   } catch (error) {
-    if (error.message === 'RATE_LIMIT') {
+    // Handle network errors (DNS, timeout, connection refused, etc.)
+    const isNetworkError = 
+      error.code === 'ENOTFOUND' || 
+      error.code === 'ETIMEDOUT' || 
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ECONNRESET' ||
+      error.message?.includes('fetch failed') ||
+      error.message?.includes('network')
+    
+    if (error.message === 'RATE_LIMIT' || isNetworkError) {
       if (retryCount >= maxRetries) {
-        throw new Error(`Download rate limit persists after ${maxRetries} retries - giving up on this song`)
+        const reason = isNetworkError ? 'network errors' : 'Download rate limit'
+        throw new Error(`${reason} persist after ${maxRetries} retries - giving up on this song`)
       }
       
       // Exponential backoff capped at 300 seconds (5 minutes)
       const baseWait = Math.pow(2, Math.min(retryCount, 6)) * 5000
       const waitTime = Math.min(baseWait, 300000) // Max 300 second wait
-      const statusMsg = `⏳ Download rate limit - waiting ${waitTime/1000}s (retry ${retryCount + 1}/${maxRetries})`
+      const reason = isNetworkError ? `Network error (${error.code || 'unknown'})` : 'Download rate limit'
+      const statusMsg = `⏳ ${reason} - waiting ${waitTime/1000}s (retry ${retryCount + 1}/${maxRetries})`
       console.log(statusMsg)
       
       // Update state with retry status
