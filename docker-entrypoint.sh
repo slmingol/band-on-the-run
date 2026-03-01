@@ -5,7 +5,10 @@ VERSION="${VERSION:-1.0.0}"
 
 # Try to read version from version.json if it exists
 if [ -f /usr/share/nginx/html/version.json ]; then
-  VERSION=$(cat /usr/share/nginx/html/version.json | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+  EXTRACTED=$(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' /usr/share/nginx/html/version.json)
+  if [ -n "$EXTRACTED" ]; then
+    VERSION="$EXTRACTED"
+  fi
 fi
 
 echo ""
