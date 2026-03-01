@@ -106,7 +106,7 @@ const ALL_SONGS = [...SONGS_WITH_STEMS, ...BASE_SONGS]
 
 // Cache for enriched songs
 let ENRICHED_SONGS = null
-const STEM_SERVER_URL = 'http://localhost:3001'
+const STEM_SERVER_URL = 'http://localhost:3435'
 const ENRICHED_CACHE_KEY = 'band_on_the_run_enriched_songs'
 const DATABASE_SONGS_KEY = 'band_on_the_run_database_songs'
 const CACHE_EXPIRY_KEY = 'band_on_the_run_cache_expiry'

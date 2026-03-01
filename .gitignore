@@ -29,3 +29,4 @@ dist-ssr
 # Spotify credentials - DO NOT COMMIT
 VITE_SPOTIFY_CLIENT_ID
 VITE_SPOTIFY_CLIENT_SECRET
+server/processing-state.json
