@@ -1,5 +1,9 @@
 # 🎵 Band on the Run
 
+<p align="center">
+  <img src="public/images/slow_paw_mickey_guitar_w_cigarette_transparent.png" alt="Band on the Run Logo" width="200">
+</p>
+
 A music guessing game where you guess the song one instrument at a time!
 
 ## Features
