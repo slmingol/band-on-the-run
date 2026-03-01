@@ -1,5 +1,5 @@
 <div align="left">
-  <img src="public/images/slow_paw_mickey_guitar_w_cigarette_transparent.png" alt="Band on the Run Logo" width="120" align="left" style="margin-right: 20px;">
+  <img src="public/images/slow_paw_mickey_guitar_w_cigarette_transparent.png" alt="Band on the Run Logo" width="150" align="left" style="margin-right: 20px;">
   <h1>🎵 Band on the Run</h1>
   <p>A music guessing game where you guess the song one instrument at a time!</p>
   <br clear="left"/>
