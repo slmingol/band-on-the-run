@@ -207,6 +207,7 @@ async function searchItunes(title, artist, retryCount = 0) {
       error.code === 'ETIMEDOUT' || 
       error.code === 'ECONNREFUSED' ||
       error.code === 'ECONNRESET' ||
+      error.code === 'EAI_AGAIN' ||
       error.message?.includes('fetch failed') ||
       error.message?.includes('network')
     
@@ -291,6 +292,7 @@ async function downloadAudio(url, title, artist, retryCount = 0) {
       error.code === 'ETIMEDOUT' || 
       error.code === 'ECONNREFUSED' ||
       error.code === 'ECONNRESET' ||
+      error.code === 'EAI_AGAIN' ||
       error.message?.includes('fetch failed') ||
       error.message?.includes('network')
     
