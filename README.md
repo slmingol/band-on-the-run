@@ -48,7 +48,7 @@ npm run preview
 
 ## Project Structure
 
-\`\`\`
+```
 band-on-the-run/
 ├── src/
 │   ├── components/
@@ -68,20 +68,20 @@ band-on-the-run/
 ├── index.html
 ├── vite.config.js
 └── package.json
-\`\`\`
+```
 
 ## Adding Songs
 
-To add more songs, edit \`src/utils/gameLogic.js\` and add entries to the \`SONGS\` array:
+To add more songs, edit `src/utils/gameLogic.js` and add entries to the `SONGS` array:
 
-\`\`\`javascript
+```javascript
 {
   title: "Song Title",
   artist: "Artist Name",
   instruments: ["🎸 Guitar", "🥁 Drums", "🎤 Vocals"],
   audioUrl: "/audio/your-song.mp3"
 }
-\`\`\`
+```
 
 ## Audio Files
 
