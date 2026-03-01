@@ -153,6 +153,11 @@ function sleep(ms) {
 // Search iTunes for a song and get preview URL with retry logic
 async function searchItunes(title, artist, retryCount = 0) {
   const maxRetries = 5 // Fail fast to test other songs and detect when rate limit lifts
+  console.log('==========================================')
+  console.log(`🚨 DEBUG: searchItunes() START - maxRetries is ${maxRetries}`)
+  console.log(`🚨 DEBUG: typeof maxRetries = ${typeof maxRetries}`)
+  console.log(`🚨 DEBUG: retryCount=${retryCount}, title="${title}", artist="${artist}"`)
+  console.log('==========================================')
   const query = encodeURIComponent(`${title} ${artist}`)
   const url = `https://itunes.apple.com/search?term=${query}&media=music&entity=song&limit=1`
   
@@ -220,7 +225,9 @@ async function searchItunes(title, artist, retryCount = 0) {
       const baseWait = Math.pow(2, Math.min(retryCount, 6)) * 5000
       const waitTime = Math.min(baseWait, 300000) // Max 300 second wait
       const reason = isNetworkError ? `Network error (${error.code || 'unknown'})` : 'iTunes rate limit'
+      console.log(`🚨 DEBUG BEFORE statusMsg: maxRetries=${maxRetries}, retryCount=${retryCount}`)
       const statusMsg = `⏳ ${reason} - waiting ${waitTime/1000}s (retry ${retryCount + 1}/${maxRetries})`
+      console.log(`🚨 DEBUG statusMsg created: "${statusMsg}"`)
       console.log(statusMsg)
       
       // Update state with retry status

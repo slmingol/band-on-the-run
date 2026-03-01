@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './LibraryStats.css';
 
-const STEM_SERVER_URL = 'http://localhost:3001';
+const STEM_SERVER_URL = 'http://localhost:3435';
 const POLL_INTERVAL = 5000; // Poll every 5 seconds to stay in sync with StemStatus
 
 function LibraryStats() {
