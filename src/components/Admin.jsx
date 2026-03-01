@@ -846,44 +846,71 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           )}
           
           <div className="stem-controls">
-            <label htmlFor="stem-count">
-              Process up to <input 
-                id="stem-count"
-                type="number" 
-                min="1" 
-                max="2500" 
-                value={stemCount || ''}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? '' : parseInt(e.target.value)
-                  setStemCount(val)
-                }}
-                onBlur={() => {
-                  // Reset to 10 if empty when user leaves field
-                  if (stemCount === '') setStemCount(10)
-                }}
-                className="stem-count-input"
-              /> songs
-            </label>
-            
-            {stemCount > 2500 && (
-              <div className="admin-error">
-                ⚠️ Maximum is 2500 songs
-              </div>
-            )}
-            {stemCount < 1 && stemCount !== '' && (
-              <div className="admin-error">
-                ⚠️ Minimum is 1 song
+            {stemStatus && stemStatus.songs.filter(s => !s.hasStems).length > 0 && !isProcessing && (
+              <div className="recommended-action">
+                <p className="action-description">
+                  <strong>📌 Recommended:</strong> Process all songs that are missing stems
+                </p>
+                <button 
+                  type="button"
+                  onClick={handleProcessMissingStems} 
+                  className="admin-button primary-action"
+                  disabled={!stemServerAvailable}
+                >
+                  🎸 Process {stemStatus.songs.filter(s => !s.hasStems).length} Songs Without Stems
+                </button>
+                <p className="action-note">
+                  <small>This will automatically find and process only the songs that don't have stems yet.</small>
+                </p>
               </div>
             )}
             
-            <button 
-              type="button"
-              onClick={handleProcessStems} 
-              className="admin-button"
-              disabled={!stemServerAvailable || isProcessing}
-            >
-              {isProcessing ? '⏳ Processing...' : '🎵 Download & Process Stems'}
-            </button>
+            <div className="manual-action" style={{ marginTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '2rem' : '0', paddingTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '2rem' : '0', borderTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '1px solid #ddd' : 'none' }}>
+              <p className="action-description">
+                <strong>Advanced:</strong> Process a specific number of songs (starts from beginning of list)
+              </p>
+              <label htmlFor="stem-count">
+                Process up to <input 
+                  id="stem-count"
+                  type="number" 
+                  min="1" 
+                  max="2500" 
+                  value={stemCount || ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : parseInt(e.target.value)
+                    setStemCount(val)
+                  }}
+                  onBlur={() => {
+                    // Reset to 10 if empty when user leaves field
+                    if (stemCount === '') setStemCount(10)
+                  }}
+                  className="stem-count-input"
+                /> songs
+              </label>
+              
+              {stemCount > 2500 && (
+                <div className="admin-error">
+                  ⚠️ Maximum is 2500 songs
+                </div>
+              )}
+              {stemCount < 1 && stemCount !== '' && (
+                <div className="admin-error">
+                  ⚠️ Minimum is 1 song
+                </div>
+              )}
+              
+              <button 
+                type="button"
+                onClick={handleProcessStems} 
+                className="admin-button"
+                disabled={!stemServerAvailable || isProcessing}
+              >
+                {isProcessing ? '⏳ Processing...' : '🎵 Process from Start of List'}
+              </button>
+              <p className="action-note">
+                <small>Note: This may re-process songs that already have stems (they'll be skipped quickly).</small>
+              </p>
+            </div>
             
             {(lastCompletedResults?.failed?.length > 0 || processingState?.results?.failed?.length > 0) && !isProcessing && (
               <button 
@@ -891,20 +918,9 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 onClick={handleRetryFailedSongs} 
                 className="admin-button retry-button"
                 disabled={!stemServerAvailable}
+                style={{ marginTop: '1rem' }}
               >
                 🔄 Retry {lastCompletedResults?.failed?.length || processingState?.results?.failed?.length} Failed Songs
-              </button>
-            )}
-            
-            {stemStatus && stemStatus.songs.filter(s => !s.hasStems).length > 0 && !isProcessing && (
-              <button 
-                type="button"
-                onClick={handleProcessMissingStems} 
-                className="admin-button"
-                disabled={!stemServerAvailable}
-                style={{ marginTop: '10px', background: '#9b59b6' }}
-              >
-                🎸 Process {stemStatus.songs.filter(s => !s.hasStems).length} Songs Without Stems
               </button>
             )}
           </div>

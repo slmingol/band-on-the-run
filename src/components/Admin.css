@@ -428,6 +428,61 @@
   background: #d35400;
 }
 
+.recommended-action {
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.1) 0%, rgba(142, 68, 173, 0.15) 100%);
+  border: 2px solid #9b59b6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.recommended-action .action-description {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.recommended-action .action-description strong {
+  color: #8e44ad;
+}
+
+.recommended-action .admin-button {
+  background: #9b59b6;
+  width: 100%;
+  font-size: 1.05rem;
+  padding: 14px 24px;
+}
+
+.recommended-action .admin-button:hover {
+  background: #8e44ad;
+}
+
+.recommended-action .action-note {
+  margin: 0.75rem 0 0 0;
+  color: #666;
+  font-style: italic;
+}
+
+.manual-action {
+  opacity: 0.85;
+}
+
+.manual-action .action-description {
+  margin: 0 0 1rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.manual-action .action-description strong {
+  color: #555;
+}
+
+.manual-action .action-note {
+  margin: 0.5rem 0 0 0;
+  color: #999;
+  font-style: italic;
+}
+
 .interrupted-job-banner {
   background: rgba(255, 193, 7, 0.15);
   border: 2px solid #ffc107;
