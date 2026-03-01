@@ -202,14 +202,18 @@ async function searchItunes(title, artist, retryCount = 0) {
     throw new Error(`No preview found for ${title} by ${artist}`)
   } catch (error) {
     // Handle network errors (DNS, timeout, connection refused, etc.)
+    // Check both error.code and error.cause.code (node-fetch wraps errors)
+    const errorCode = error.code || error.cause?.code
     const isNetworkError = 
-      error.code === 'ENOTFOUND' || 
-      error.code === 'ETIMEDOUT' || 
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ECONNRESET' ||
-      error.code === 'EAI_AGAIN' ||
+      errorCode === 'ENOTFOUND' || 
+      errorCode === 'ETIMEDOUT' || 
+      errorCode === 'ECONNREFUSED' ||
+      errorCode === 'ECONNRESET' ||
+      errorCode === 'EAI_AGAIN' ||
       error.message?.includes('fetch failed') ||
-      error.message?.includes('network')
+      error.message?.includes('network') ||
+      error.message?.includes('EAI_AGAIN') ||
+      error.message?.includes('getaddrinfo')
     
     if (error.message === 'RATE_LIMIT' || isNetworkError) {
       if (retryCount >= maxRetries) {
@@ -287,14 +291,18 @@ async function downloadAudio(url, title, artist, retryCount = 0) {
     return outputPath
   } catch (error) {
     // Handle network errors (DNS, timeout, connection refused, etc.)
+    // Check both error.code and error.cause.code (node-fetch wraps errors)
+    const errorCode = error.code || error.cause?.code
     const isNetworkError = 
-      error.code === 'ENOTFOUND' || 
-      error.code === 'ETIMEDOUT' || 
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ECONNRESET' ||
-      error.code === 'EAI_AGAIN' ||
+      errorCode === 'ENOTFOUND' || 
+      errorCode === 'ETIMEDOUT' || 
+      errorCode === 'ECONNREFUSED' ||
+      errorCode === 'ECONNRESET' ||
+      errorCode === 'EAI_AGAIN' ||
       error.message?.includes('fetch failed') ||
-      error.message?.includes('network')
+      error.message?.includes('network') ||
+      error.message?.includes('EAI_AGAIN') ||
+      error.message?.includes('getaddrinfo')
     
     if (error.message === 'RATE_LIMIT' || isNetworkError) {
       if (retryCount >= maxRetries) {
