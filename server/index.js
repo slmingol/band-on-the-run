@@ -1,10 +1,26 @@
 import express from 'express'
 import cors from 'cors'
+import { readFile } from 'fs/promises'
 import { processStemsForTopSongs, getStemStatus, checkForInterruptedJob, getProcessingState, resumeInterruptedJob, retryFailedSongs, cancelProcessing, processMissingStems } from './stem-processor.js'
 import { enrichAllSongs, getEnrichedSongs, needsRefresh, getItunesApiStatus } from './song-enrichment.js'
 
 const app = express()
 const PORT = 3001
+
+// Display version banner on startup
+let version = process.env.VERSION || '1.5.5'
+try {
+  const packageJson = JSON.parse(await readFile('./package.json', 'utf-8'))
+  version = packageJson.version
+} catch (error) {
+  // Ignore if package.json not found (use env var or default)
+}
+
+console.log('\n' + '='.repeat(60))
+console.log('🎵  Band on the Run - Backend Server')
+console.log(`📦  Version: ${version}`)
+console.log(`🚀  Environment: ${process.env.NODE_ENV || 'development'}`)
+console.log('='.repeat(60) + '\n')
 
 app.use(cors())
 app.use(express.json())
@@ -200,5 +216,5 @@ app.post('/api/stems/process-missing', async (req, res) => {
 })
 
 app.listen(PORT, () => {
-  console.log(`🎵 Stem management server running on http://localhost:${PORT}`)
+  console.log(`\n✅ Server ready on http://localhost:${PORT}\n`)
 })
