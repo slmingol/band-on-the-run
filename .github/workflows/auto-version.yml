@@ -8,6 +8,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'public/version.json'
+  workflow_dispatch:
 
 jobs:
   bump-version:
