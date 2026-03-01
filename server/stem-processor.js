@@ -248,7 +248,7 @@ async function searchItunes(title, artist, retryCount = 0) {
 
 // Download audio file from iTunes with retry logic
 async function downloadAudio(url, title, artist, retryCount = 0) {
-  const maxRetries = 30 // Keep retrying for a long time
+  const maxRetries = 5 // Fail fast to test other songs and detect when rate limit lifts
   const sanitizedTitle = `${artist}-${title}`.replace(/[^a-z0-9]/gi, '_')
   const outputPath = path.join(ORIGINALS_DIR, `${sanitizedTitle}.m4a`)
   
@@ -465,6 +465,7 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
       totalCount: count,
       currentIndex: i,
       currentSong: `${song.title} by ${song.artist}`,
+      currentStage: 'checking',
       startedAt: currentProcessingState.startedAt,
       statusMessage: null,
       shouldCancel: false,
@@ -486,6 +487,7 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
           totalCount: count,
           currentIndex: i,
           currentSong: `${song.title} by ${song.artist}`,
+          currentStage: 'skipped',
           startedAt: currentProcessingState.startedAt,
           statusMessage: null,
           results
@@ -497,9 +499,19 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
       }
       
       // Search iTunes
+      await saveProcessingState({
+        ...currentProcessingState,
+        currentStage: 'searching',
+        statusMessage: '🔍 Searching iTunes API for preview URL...'
+      })
       const previewUrl = await searchItunes(song.title, song.artist)
       
       // Download audio
+      await saveProcessingState({
+        ...currentProcessingState,
+        currentStage: 'downloading',
+        statusMessage: '⬇️  Downloading audio from iTunes...'
+      })
       const audioPath = await downloadAudio(previewUrl, song.title, song.artist)
       
       // Update status for Demucs processing
@@ -508,8 +520,9 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
         totalCount: count,
         currentIndex: i,
         currentSong: `${song.title} by ${song.artist}`,
+        currentStage: 'processing',
         startedAt: currentProcessingState.startedAt,
-        statusMessage: '🎸 Separating audio into stems...',
+        statusMessage: '🎸 Separating audio into stems with AI...',
         results
       })
       
@@ -523,14 +536,16 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
         totalCount: count,
         currentIndex: i,
         currentSong: `${song.title} by ${song.artist}`,
+        currentStage: 'complete',
         startedAt: currentProcessingState.startedAt,
         statusMessage: null,
         results
       })
       
-      // Add a small delay between songs to avoid rate limits (2 seconds)
+      // Add delay between songs to avoid rate limits (3 seconds)
       if (i < songsToProcess.length - 1) {
-        await sleep(2000)
+        console.log('⏸️  Waiting 3 seconds before next song...')
+        await sleep(3000)
       }
       
     } catch (error) {

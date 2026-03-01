@@ -765,8 +765,9 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                     ))}
                   </ul>
                   <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#666' }}>
-                    💡 Tip: These songs failed after 30 retry attempts with exponential backoff (up to 5 minutes per retry). 
-                    You can try running the process again later - iTunes rate limits reset over time.
+                    💡 Tip: These songs failed after 5 retry attempts with exponential backoff (up to 5 minutes per retry). 
+                    The system now fails fast to test other songs and detect when iTunes rate limits lift.
+                    You can try running the process again later - rate limits reset over time.
                   </p>
                 </details>
               )}
@@ -782,12 +783,34 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 ⏭️ {processingState.results?.skipped || 0} skipped | 
                 ❌ {processingState.results?.failed?.length || 0} failed
               </small></p>
+              
+              {/* Processing Pipeline Visualization */}
+              <div className="processing-pipeline">
+                <div className={`pipeline-stage ${processingState.currentStage === 'searching' ? 'active' : processingState.currentStage !== 'checking' ? 'complete' : ''}`}>
+                  <div className="stage-icon">🔍</div>
+                  <div className="stage-label">Search iTunes</div>
+                  <div className="stage-desc">Get preview URL</div>
+                </div>
+                <div className="pipeline-arrow">→</div>
+                <div className={`pipeline-stage ${processingState.currentStage === 'downloading' ? 'active' : processingState.currentStage === 'processing' || processingState.currentStage === 'complete' ? 'complete' : ''}`}>
+                  <div className="stage-icon">⬇️</div>
+                  <div className="stage-label">Download</div>
+                  <div className="stage-desc">Get .m4a file</div>
+                </div>
+                <div className="pipeline-arrow">→</div>
+                <div className={`pipeline-stage ${processingState.currentStage === 'processing' ? 'active' : processingState.currentStage === 'complete' ? 'complete' : ''}`}>
+                  <div className="stage-icon">🎸</div>
+                  <div className="stage-label">Separate</div>
+                  <div className="stage-desc">AI stem generation</div>
+                </div>
+              </div>
+              
               {processingState.statusMessage && (
                 <div className="retry-banner">
                   {processingState.statusMessage}
                   {processingState.statusMessage.includes('retry') && (
                     <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', opacity: 0.9 }}>
-                      💡 iTunes is rate limiting requests. The system will automatically retry with increasing delays (5s → 300s max) up to 30 times per song.
+                      💡 iTunes is rate limiting requests. The system will automatically retry with increasing delays (5s → 300s max) up to 5 times per song before moving on.
                     </div>
                   )}
                 </div>
