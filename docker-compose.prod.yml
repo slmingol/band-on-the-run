@@ -15,6 +15,7 @@ services:
       - "3435:3001"
     volumes:
       - ./public/audio:/app/public/audio
+      - ./scripts:/app/scripts:ro
     environment:
       - NODE_ENV=production
     restart: unless-stopped
