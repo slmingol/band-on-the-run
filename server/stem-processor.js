@@ -293,6 +293,11 @@ async function downloadAudio(url, title, artist, retryCount = 0) {
         throw new Error(`${reason} persist after ${maxRetries} retries - giving up on this song`)
       }
       
+      // Check for cancellation before retrying
+      if (currentProcessingState?.shouldCancel) {
+        throw new Error('CANCELLED')
+      }
+      
       // Exponential backoff capped at 300 seconds (5 minutes)
       const baseWait = Math.pow(2, Math.min(retryCount, 6)) * 5000
       const waitTime = Math.min(baseWait, 300000) // Max 300 second wait
@@ -308,7 +313,15 @@ async function downloadAudio(url, title, artist, retryCount = 0) {
         })
       }
       
-      await sleep(waitTime)
+      // Sleep in 1-second intervals to allow cancellation during wait
+      const sleepInterval = 1000 // 1 second
+      for (let slept = 0; slept < waitTime; slept += sleepInterval) {
+        if (currentProcessingState?.shouldCancel) {
+          throw new Error('CANCELLED')
+        }
+        await sleep(Math.min(sleepInterval, waitTime - slept))
+      }
+      
       return downloadAudio(url, title, artist, retryCount + 1)
     }
     throw error
