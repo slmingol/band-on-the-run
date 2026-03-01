@@ -1,5 +1,5 @@
 <div align="left">
-  <img src="public/images/slow_paw_mickey_guitar_w_cigarette_transparent.png" alt="Band on the Run Logo" width="200">
+  <img src="public/images/slow_paw_mickey_guitar_w_cigarette_transparent.png" alt="Band on the Run Logo" width="200" style="margin-left: -20px;">
 </div>
 
 # 🎵 Band on the Run
