@@ -349,6 +349,8 @@ rsync -avz --progress ./public/ root@remote-server:~/docker_apps/bandontherun/pu
 rsync -avz --progress ./scripts/ root@remote-server:~/docker_apps/bandontherun/scripts/
 ```
 
+**Quick deployment:** See [`rsync.sh`](rsync.sh) for a ready-to-use deployment script with the above commands.
+
 **Options explained:**
 - `-a` = archive mode (preserves permissions, timestamps)
 - `-v` = verbose output
