@@ -83,6 +83,34 @@
   font-size: 0.9rem;
 }
 
+.playback-controls .skip-button {
+  margin-left: auto;
+  width: auto;
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  border: 2px solid #e67e22;
+  border-radius: 8px;
+  background-color: rgba(230, 126, 34, 0.1);
+  color: #e67e22;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.playback-controls .skip-button:hover:not(:disabled) {
+  background-color: rgba(230, 126, 34, 0.2);
+  border-color: #d35400;
+  color: #d35400;
+  transform: translateY(-1px);
+}
+
+.playback-controls .skip-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .instruments-display {
   background-color: var(--card-bg);
   padding: 1rem 1.25rem;
@@ -542,6 +570,11 @@
   
   .playback-controls .instruments-display {
     min-width: 100%;
+  }
+  
+  .playback-controls .skip-button {
+    width: 100%;
+    margin-left: 0;
   }
   
   .instruments-list {

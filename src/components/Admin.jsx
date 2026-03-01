@@ -14,6 +14,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   const [stemServerAvailable, setStemServerAvailable] = useState(false)
   const [libraryConfig, setLibraryConfig] = useState(null)
   const [processingState, setProcessingState] = useState(null)
+  const [lastCompletedResults, setLastCompletedResults] = useState(null)
 
   // Check if stem server is running and get status
   useEffect(() => {
@@ -34,8 +35,13 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           const status = await response.json()
           setStemStatus(status)
           setStemServerAvailable(true)
+        } else {
+          // Server responded but with an error - keep current status, mark as available
+          console.log('Stem status returned error:', response.status)
         }
       } catch (error) {
+        // Network error or server down - keep status but mark unavailable
+        console.log('[DEBUG] Stem server fetch error:', error.message)
         setStemServerAvailable(false)
       }
     }
@@ -77,6 +83,14 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
         const response = await fetch(`${STEM_SERVER_URL}/api/stems/processing`)
         if (response.ok) {
           const data = await response.json()
+          
+          // If processing just finished, save the results for display
+          if (processingState?.isRunning && !data.isRunning && processingState.results) {
+            setLastCompletedResults(processingState.results)
+            // Clear completion banner after 15 seconds
+            setTimeout(() => setLastCompletedResults(null), 15000)
+          }
+          
           setProcessingState(data)
           
           // Clear local processing state if backend reports not running
@@ -85,7 +99,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           }
         }
       } catch (error) {
-        console.log('Processing state not available')
+        console.log('Processing state not available:', error.message)
       }
     }
     
@@ -125,7 +139,10 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
     }
   }, [processingState, isProcessing])
 
-  const handleProcessStems = async () => {
+  const handleProcessStems = async (e) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
+    
     const count = stemCount === '' ? 10 : stemCount
     
     if (!count || count < 1 || count > 2500) {
@@ -167,6 +184,152 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           setIsProcessing(false)
           refreshStemStatus()
         }, (count * 10 + 60) * 1000)
+      } else {
+        const error = await response.json()
+        setMessage(`❌ Failed: ${error.error}`)
+        setIsProcessing(false)
+      }
+    } catch (error) {
+      setMessage('❌ Stem server not running! Start it with: npm run stem-server')
+      setIsProcessing(false)
+    }
+  }
+
+  const handleRetryFailedSongs = async (e) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
+    
+    const failedCount = lastCompletedResults?.failed?.length || processingState?.results?.failed?.length || 0
+    
+    if (failedCount === 0) {
+      setMessage('❌ No failed songs to retry')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+
+    setIsProcessing(true)
+    setMessage(`🔄 Starting retry for ${failedCount} failed songs... Check the terminal for progress.`)
+
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/stems/retry-failed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (response.ok) {
+        setMessage(`✅ Retry started! Processing ${failedCount} songs. This will take approximately ${Math.ceil(failedCount * 10 / 60)} minutes. Status updates every 30 seconds...`)
+        setLastCompletedResults(null) // Clear the completion banner since we're reprocessing
+        
+        // Auto-refresh status every 30 seconds while processing
+        const interval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
+            if (statusResponse.ok) {
+              const status = await statusResponse.json()
+              setStemStatus(status)
+              setMessage(`⏳ Retrying... Check terminal for details.`)
+            }
+          } catch (err) {
+            // Silently fail, user can manually refresh
+          }
+        }, 30000)
+        
+        // Stop auto-refresh after estimated completion time + buffer
+        setTimeout(() => {
+          clearInterval(interval)
+          setIsProcessing(false)
+          refreshStemStatus()
+        }, (failedCount * 10 + 60) * 1000)
+      } else {
+        const error = await response.json()
+        setMessage(`❌ Failed: ${error.error}`)
+        setIsProcessing(false)
+      }
+    } catch (error) {
+      setMessage('❌ Stem server not running! Start it with: npm run stem-server')
+      setIsProcessing(false)
+    }
+  }
+
+  const handleCancelProcessing = async (e) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
+    
+    if (!window.confirm('Are you sure you want to cancel the current processing job? Progress will be saved and you can resume later.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/stems/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (response.ok) {
+        setMessage('🛑 Processing cancelled. Progress has been saved.')
+        setIsProcessing(false)
+        setTimeout(() => setMessage(''), 3000)
+      } else {
+        const error = await response.json()
+        setMessage(`❌ Failed to cancel: ${error.error}`)
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch (error) {
+      setMessage('❌ Failed to cancel processing')
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
+
+  const handleProcessMissingStems = async (e) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
+    
+    if (!stemStatus) {
+      setMessage('❌ Please refresh stem status first')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+    
+    const missingCount = stemStatus.songs.filter(s => !s.hasStems).length
+    
+    if (missingCount === 0) {
+      setMessage('✅ All songs already have stems!')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+
+    setIsProcessing(true)
+    setMessage(`🔄 Starting processing for ${missingCount} songs without stems... Check the terminal for progress.`)
+
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/stems/process-missing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (response.ok) {
+        setMessage(`✅ Processing started! Processing ${missingCount} songs. This will take approximately ${Math.ceil(missingCount * 10 / 60)} minutes. Status updates every 30 seconds...`)
+        
+        // Auto-refresh status every 30 seconds while processing
+        const interval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
+            if (statusResponse.ok) {
+              const status = await statusResponse.json()
+              setStemStatus(status)
+              setMessage(`⏳ Processing... Check terminal for details.`)
+            }
+          } catch (err) {
+            // Silently fail, user can manually refresh
+          }
+        }, 30000)
+        
+        // Stop auto-refresh after estimated completion time + buffer
+        setTimeout(() => {
+          clearInterval(interval)
+          setIsProcessing(false)
+          refreshStemStatus()
+        }, (missingCount * 10 + 60) * 1000)
       } else {
         const error = await response.json()
         setMessage(`❌ Failed: ${error.error}`)
@@ -579,29 +742,83 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             </div>
           )}
           
-          {processingState && processingState.isRunning && !processingState.currentSong && (
-            <div className="interrupted-job-banner">
-              <h4>⚠️ Interrupted Processing Job Detected</h4>
+          {lastCompletedResults && !processingState?.isRunning && (
+            <div className="processing-complete">
+              <h4>✅ Processing Complete!</h4>
               <p>
-                Started: {new Date(processingState.startedAt).toLocaleString()}<br/>
-                Progress: {processingState.currentIndex + 1}/{processingState.totalCount} songs<br/>
-                Successful: {processingState.results.successful} | 
-                Skipped: {processingState.results.skipped} | 
-                Failed: {processingState.results.failed?.length || 0}
+                ✅ <strong>{lastCompletedResults.successful}</strong> new stems created | 
+                ⏭️ <strong>{lastCompletedResults.skipped}</strong> already existed | 
+                ❌ <strong>{lastCompletedResults.failed?.length || 0}</strong> failed
               </p>
-              <button onClick={handleResumeJob} className="admin-button">
-                🔄 Resume Processing
-              </button>
+              {lastCompletedResults.failed && lastCompletedResults.failed.length > 0 && (
+                <details style={{ marginTop: '0.5rem' }}>
+                  <summary>Show {lastCompletedResults.failed.length} failed songs (after 30 retries each)</summary>
+                  <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem', maxHeight: '300px', overflow: 'auto' }}>
+                    {lastCompletedResults.failed.map((f, i) => (
+                      <li key={i} style={{ marginBottom: '0.75rem' }}>
+                        <small>
+                          <strong>{f.song?.title}</strong> by {f.song?.artist}
+                          <br/>
+                          <span style={{ color: '#d32f2f' }}>→ {f.error}</span>
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                  <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#666' }}>
+                    💡 Tip: These songs failed after 30 retry attempts with exponential backoff (up to 5 minutes per retry). 
+                    You can try running the process again later - iTunes rate limits reset over time.
+                  </p>
+                </details>
+              )}
             </div>
           )}
           
-          {processingState && processingState.isRunning && processingState.currentSong && (
+          {processingState && processingState.isRunning && (
             <div className="processing-progress">
-              <p>🎵 Currently processing: <strong>{processingState.currentSong}</strong></p>
+              <p>🎵 Currently processing: <strong>{processingState.currentSong || 'Initializing...'}</strong></p>
               <p>Progress: {processingState.currentIndex + 1}/{processingState.totalCount} songs</p>
+              <p><small>
+                ✅ {processingState.results?.successful || 0} successful | 
+                ⏭️ {processingState.results?.skipped || 0} skipped | 
+                ❌ {processingState.results?.failed?.length || 0} failed
+              </small></p>
               {processingState.statusMessage && (
-                <p className="status-message">{processingState.statusMessage}</p>
+                <div className="retry-banner">
+                  {processingState.statusMessage}
+                  {processingState.statusMessage.includes('retry') && (
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', opacity: 0.9 }}>
+                      💡 iTunes is rate limiting requests. The system will automatically retry with increasing delays (5s → 300s max) up to 30 times per song.
+                    </div>
+                  )}
+                </div>
               )}
+              {processingState.results?.failed && processingState.results.failed.length > 0 && (
+                <details style={{ marginTop: '0.75rem' }}>
+                  <summary style={{ cursor: 'pointer', color: '#d32f2f', fontSize: '0.9rem' }}>
+                    Show {processingState.results.failed.length} failed songs
+                  </summary>
+                  <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem', maxHeight: '200px', overflow: 'auto' }}>
+                    {processingState.results.failed.map((f, i) => (
+                      <li key={i} style={{ marginBottom: '0.5rem' }}>
+                        <small style={{ color: '#666' }}>
+                          <strong>{f.song?.title}</strong> by {f.song?.artist}
+                          <br/>
+                          <span style={{ color: '#d32f2f' }}>→ {f.error}</span>
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              
+              <button 
+                type="button"
+                onClick={handleCancelProcessing} 
+                className="admin-button danger small"
+                style={{ marginTop: '1rem' }}
+              >
+                🛑 Cancel Processing
+              </button>
             </div>
           )}
           
@@ -637,12 +854,36 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             )}
             
             <button 
+              type="button"
               onClick={handleProcessStems} 
               className="admin-button"
               disabled={!stemServerAvailable || isProcessing}
             >
               {isProcessing ? '⏳ Processing...' : '🎵 Download & Process Stems'}
             </button>
+            
+            {(lastCompletedResults?.failed?.length > 0 || processingState?.results?.failed?.length > 0) && !isProcessing && (
+              <button 
+                type="button"
+                onClick={handleRetryFailedSongs} 
+                className="admin-button retry-button"
+                disabled={!stemServerAvailable}
+              >
+                🔄 Retry {lastCompletedResults?.failed?.length || processingState?.results?.failed?.length} Failed Songs
+              </button>
+            )}
+            
+            {stemStatus && stemStatus.songs.filter(s => !s.hasStems).length > 0 && !isProcessing && (
+              <button 
+                type="button"
+                onClick={handleProcessMissingStems} 
+                className="admin-button"
+                disabled={!stemServerAvailable}
+                style={{ marginTop: '10px', background: '#9b59b6' }}
+              >
+                🎸 Process {stemStatus.songs.filter(s => !s.hasStems).length} Songs Without Stems
+              </button>
+            )}
           </div>
           
           <p className="admin-note">

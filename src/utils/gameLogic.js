@@ -166,9 +166,24 @@ async function getEnrichedSongs() {
     return ENRICHED_SONGS
   }
   
-  // Fallback to old client-side behavior if backend is unavailable
-  console.log('⚠️ Backend unavailable, falling back to client-side enrichment')
-  return await getEnrichedSongsFallback()
+  // Don't fallback to client-side iTunes API calls - they trigger rate limits
+  // Just use songs from the database without enrichment
+  console.log('⚠️ Backend enrichment not available - using database songs only')
+  const databaseSongs = await loadSongsFromDatabase()
+  
+  // Only return songs that have stems (no iTunes API calls needed)
+  ENRICHED_SONGS = databaseSongs.map(song => {
+    const stemSong = SONGS_WITH_STEMS.find(
+      s => s.title === song.title && s.artist === song.artist
+    )
+    if (stemSong) {
+      return { ...song, stems: stemSong.stems, id: song.id }
+    }
+    return null
+  }).filter(Boolean)
+  
+  console.log(`✅ Loaded ${ENRICHED_SONGS.length} songs with stems`)
+  return ENRICHED_SONGS
 }
 
 // Fallback: old client-side enrichment logic

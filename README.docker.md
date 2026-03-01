@@ -161,11 +161,65 @@ docker pull ghcr.io/slmingol/band-on-the-run:latest
 
 ## CI/CD Pipeline
 
-The repository uses GitHub Actions for automated builds:
+The repository uses GitHub Actions for automated builds and releases:
 
-1. **docker-build.yml** - Builds and pushes Docker images on every push
-2. **auto-version.yml** - Auto-bumps version and creates releases
+### Automatic Versioning & Tagging
+
+When code is merged to `main`, the CI pipeline automatically:
+
+1. **auto-version.yml** - Analyzes commit messages and bumps version
+   - `major:` or `BREAKING CHANGE` → major version bump (1.0.0 → 2.0.0)
+   - `feat:` or `feature:` → minor version bump (1.0.0 → 1.1.0)
+   - Other commits → patch version bump (1.0.0 → 1.0.1)
+   - Creates a Git tag (e.g., `v1.1.0`)
+   - Creates a GitHub Release
+
+2. **docker-build.yml** - Builds and pushes Docker images
+   - Triggers on push to `main` and on version tags
+   - Extracts version from `package.json`
+   - Tags images with multiple formats:
+     - `latest` - Latest stable release from main branch
+     - `v1.1.0` - Exact semver from package.json
+     - `1.1` - Major.minor version
+     - `1` - Major version
+     - `main-sha123456` - Branch + commit SHA
+   - Publishes to GitHub Container Registry (`ghcr.io`)
+
 3. **cleanup-*.yml** - Cleans up old artifacts and Docker images
+
+### Available Image Tags
+
+Pull specific versions using these tags:
+
+```bash
+# Latest stable release
+docker pull ghcr.io/slmingol/band-on-the-run:latest
+
+# Specific version
+docker pull ghcr.io/slmingol/band-on-the-run:v1.1.0
+docker pull ghcr.io/slmingol/band-on-the-run:1.1
+docker pull ghcr.io/slmingol/band-on-the-run:1
+
+# Specific commit
+docker pull ghcr.io/slmingol/band-on-the-run:main-sha123456
+```
+
+### Triggering a Release
+
+To create a new release, use conventional commit messages:
+
+```bash
+# Patch release (1.0.0 → 1.0.1)
+git commit -m "fix: resolve issue with playback"
+
+# Minor release (1.0.0 → 1.1.0)
+git commit -m "feat: add new game mode"
+
+# Major release (1.0.0 → 2.0.0)
+git commit -m "feat: redesign UI
+
+BREAKING CHANGE: complete UI overhaul"
+```
 
 See `.github/workflows/` for workflow details.
 

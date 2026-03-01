@@ -13,7 +13,7 @@ function App() {
   const [currentView, setCurrentView] = useState('menu') // menu, daily, practice, stats, admin
   const [gameMode, setGameMode] = useState(null)
   const [isPreloading, setIsPreloading] = useState(true)
-  const [version, setVersion] = useState('1.0.0')
+  const [version, setVersion] = useState('1.1.0')
   const { themePreference, effectiveTheme, setTheme } = useTheme()
 
   // Fetch version from version.json
@@ -21,7 +21,7 @@ function App() {
     fetch('/version.json')
       .then(res => res.json())
       .then(data => setVersion(data.version))
-      .catch(() => setVersion('1.0.0'))
+      .catch(() => setVersion('1.1.0'))
   }, [])
 
   // Preload songs in background on app startup

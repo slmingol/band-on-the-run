@@ -6,7 +6,7 @@ function Game({ mode, onBack, onShowStats }) {
   const [currentSong, setCurrentSong] = useState(null)
   const [loadError, setLoadError] = useState(null)
   const [currentInstrument, setCurrentInstrument] = useState(0)
-  const [guesses, setGuesses] = useState([])
+  const [guesses, setGuesses] = useState(['BASS_START'])
   const [isGameOver, setIsGameOver] = useState(false)
   const [hasWon, setHasWon] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -256,7 +256,7 @@ function Game({ mode, onBack, onShowStats }) {
       .slice(0, currentInstrument + 1)
       .join('')
     const result = `Band on the Run ${mode === 'daily' ? '🎯' : '🎮'}\n` +
-                   `${hasWon ? '✅' : '❌'} ${guesses.length}/${maxInstruments} attempts\n` +
+                   `${hasWon ? '✅' : '❌'} ${guesses.filter(g => g !== 'BASS_START').length}/${maxInstruments} attempts\n` +
                    `${instrumentEmojis}\n` +
                    `${window.location.href}`
     
@@ -321,6 +321,16 @@ function Game({ mode, onBack, onShowStats }) {
             </div>
           </div>
           
+          {!isGameOver && (
+            <button 
+              onClick={skipInstrument}
+              className="skip-button"
+              disabled={currentInstrument >= maxInstruments - 1}
+            >
+              ⏭️ Skip to Next Instrument
+            </button>
+          )}
+          
           {/* Audio elements for stem playback */}
           {currentSong.stems ? (
             <>
@@ -337,10 +347,21 @@ function Game({ mode, onBack, onShowStats }) {
         {!isGameOver && (
           <div className="guess-section">
             <div className="guesses-header">
-              <h4>Your Guesses: {guesses.length}</h4>
+              <h4>Your Guesses: {guesses.filter(g => g !== 'BASS_START').length}</h4>
               {guesses.length > 0 && (
                 <div className="guesses-compact">
                   {guesses.map((guess, idx) => {
+                    if (guess === 'BASS_START') {
+                      return (
+                        <span 
+                          key={idx} 
+                          className="guess-chip bass-start"
+                          title="Bass (Starting Instrument)"
+                        >
+                          🎸
+                        </span>
+                      )
+                    }
                     const guessTitle = guess === 'SKIPPED' ? 'SKIPPED' : guess.split(' - ')[0]
                     const isCorrect = guessTitle === currentSong.title
                     return (
@@ -391,14 +412,6 @@ function Game({ mode, onBack, onShowStats }) {
               </div>
             )}
             
-            <button 
-              onClick={skipInstrument}
-              className="skip-button"
-              disabled={currentInstrument >= maxInstruments - 1}
-            >
-              ⏭️ Skip to Next Instrument
-            </button>
-            
             {mode === 'practice' && (
               <div className="practice-controls">
                 <button 
@@ -430,7 +443,7 @@ function Game({ mode, onBack, onShowStats }) {
             <p className="result-artist">by {currentSong.artist}</p>
             {hasWon && (
               <p className="result-stats">
-                You guessed it in {guesses.length} {guesses.length === 1 ? 'attempt' : 'attempts'} 
+                You guessed it in {guesses.filter(g => g !== 'BASS_START').length} {guesses.filter(g => g !== 'BASS_START').length === 1 ? 'attempt' : 'attempts'} 
                 with {currentInstrument + 1} {currentInstrument + 1 === 1 ? 'instrument' : 'instruments'}!
               </p>
             )}

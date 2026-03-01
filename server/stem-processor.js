@@ -49,6 +49,23 @@ export async function getProcessingState() {
   return currentProcessingState || await loadProcessingState()
 }
 
+export async function cancelProcessing() {
+  if (!currentProcessingState || !currentProcessingState.isRunning) {
+    throw new Error('No processing job is currently running')
+  }
+  
+  console.log('🛑 Cancellation requested...')
+  
+  // Set cancellation flag
+  await saveProcessingState({
+    ...currentProcessingState,
+    shouldCancel: true,
+    statusMessage: '🛑 Cancellation requested...'
+  })
+  
+  return { message: 'Cancellation requested. Processing will stop after the current song.' }
+}
+
 // Check for interrupted job on startup and optionally resume
 export async function checkForInterruptedJob() {
   const state = await loadProcessingState()
@@ -86,11 +103,11 @@ export async function resumeInterruptedJob() {
   
   console.log(`\n🔄 Resuming interrupted job from song ${state.currentIndex + 1}/${state.totalCount}...`)
   
-  // Clear the interrupted state and start fresh from where we left off
+  // Clear the interrupted state
   await clearProcessingState()
   
-  // Process the remaining songs
-  return await processStemsForTopSongs(state.totalCount)
+  // Process remaining songs starting from where we left off
+  return await processStemsForTopSongs(state.totalCount, state.currentIndex, state.results)
 }
 
 
@@ -142,17 +159,32 @@ async function searchItunes(title, artist, retryCount = 0) {
   try {
     const response = await fetch(url)
     
-    // Try to parse as JSON regardless of content-type (iTunes sometimes sends wrong headers)
+    // Get response as text first (can only read body once)
+    const text = await response.text()
+    
+    // Check for rate limit indicators
+    const isRateLimit = 
+      text.toLowerCase().includes('rate limit') ||
+      text.toLowerCase().includes('too many requests') ||
+      text.toLowerCase().includes('try again later') ||
+      response.status === 429 || 
+      response.status === 503 ||
+      text.startsWith('<') || // HTML response (error page)
+      text.trim() === '' || // Empty response
+      (!text.startsWith('{') && !text.startsWith('[')) // Not JSON
+    
+    if (isRateLimit) {
+      throw new Error('RATE_LIMIT')
+    }
+    
+    // Try to parse as JSON
     let data
     try {
-      data = await response.json()
+      data = JSON.parse(text)
     } catch (parseError) {
-      // If JSON parse fails, check if it's a rate limit text response
-      const text = await response.text()
-      if (text.toLowerCase().includes('rate limit')) {
-        throw new Error('RATE_LIMIT')
-      }
-      throw new Error(`Invalid response: ${text.substring(0, 100)}`)
+      // If it's not JSON and we haven't caught it as rate limit, log it and retry anyway
+      console.log(`Non-JSON response for ${title}: ${text.substring(0, 200)}`)
+      throw new Error('RATE_LIMIT') // Treat as rate limit to trigger retry
     }
     
     if (data.results && data.results.length > 0) {
@@ -169,6 +201,11 @@ async function searchItunes(title, artist, retryCount = 0) {
         throw new Error(`iTunes rate limit persists after ${maxRetries} retries - giving up on this song`)
       }
       
+      // Check for cancellation before retrying
+      if (currentProcessingState?.shouldCancel) {
+        throw new Error('CANCELLED')
+      }
+      
       // Exponential backoff capped at 300 seconds (5 minutes)
       const baseWait = Math.pow(2, Math.min(retryCount, 6)) * 5000
       const waitTime = Math.min(baseWait, 300000) // Max 300 second wait
@@ -183,7 +220,15 @@ async function searchItunes(title, artist, retryCount = 0) {
         })
       }
       
-      await sleep(waitTime)
+      // Sleep in 1-second intervals to allow cancellation during wait
+      const sleepInterval = 1000 // 1 second
+      for (let slept = 0; slept < waitTime; slept += sleepInterval) {
+        if (currentProcessingState?.shouldCancel) {
+          throw new Error('CANCELLED')
+        }
+        await sleep(Math.min(sleepInterval, waitTime - slept))
+      }
+      
       return searchItunes(title, artist, retryCount + 1)
     }
     throw error
@@ -333,7 +378,7 @@ export async function getStemStatus() {
 }
 
 // Process stems for top X songs
-export async function processStemsForTopSongs(count) {
+export async function processStemsForTopSongs(count, startIndex = 0, previousResults = null) {
   // Check if there's already a job running
   if (currentProcessingState && currentProcessingState.isRunning) {
     throw new Error('A stem processing job is already running. Please wait for it to complete.')
@@ -346,9 +391,10 @@ export async function processStemsForTopSongs(count) {
   const topSongs = JSON.parse(await fs.readFile(TOP_SONGS_PATH, 'utf-8'))
   const songsToProcess = topSongs.slice(0, count)
   
-  console.log(`🎵 Processing stems for top ${count} songs...`)
+  console.log(`🎵 Processing stems for top ${count} songs${startIndex > 0 ? ` (resuming from ${startIndex + 1})` : ''}...`)
   
-  const results = {
+  // Use previous results if resuming, otherwise start fresh
+  const results = previousResults || {
     attempted: 0,
     successful: 0,
     skipped: 0,
@@ -359,14 +405,21 @@ export async function processStemsForTopSongs(count) {
   await saveProcessingState({
     isRunning: true,
     totalCount: count,
-    currentIndex: 0,
+    currentIndex: startIndex,
     currentSong: null,
     statusMessage: null,
     startedAt: new Date().toISOString(),
     results
   })
   
-  for (let i = 0; i < songsToProcess.length; i++) {
+  for (let i = startIndex; i < songsToProcess.length; i++) {
+    // Check for cancellation
+    if (currentProcessingState?.shouldCancel) {
+      console.log('\n🛑 Processing cancelled by user')
+      await clearProcessingState()
+      throw new Error('Processing cancelled by user')
+    }
+    
     const song = songsToProcess[i]
     results.attempted++
     console.log(`\n[${results.attempted}/${count}] ${song.title} by ${song.artist}`)
@@ -379,6 +432,7 @@ export async function processStemsForTopSongs(count) {
       currentSong: `${song.title} by ${song.artist}`,
       startedAt: currentProcessingState.startedAt,
       statusMessage: null,
+      shouldCancel: false,
       results
     })
     
@@ -445,6 +499,13 @@ export async function processStemsForTopSongs(count) {
       }
       
     } catch (error) {
+      // If cancelled, propagate error to stop processing
+      if (error.message === 'CANCELLED') {
+        console.log('\n🛑 Processing cancelled during retry')
+        await clearProcessingState()
+        throw new Error('Processing cancelled by user')
+      }
+      
       console.error(`❌ Failed: ${song.title} - ${error.message}`)
       results.failed.push({ song, error: error.message })
       
@@ -480,6 +541,371 @@ export async function processStemsForTopSongs(count) {
   }
   
   console.log(`\n✅ Processing complete!`)
+  console.log(`   Attempted: ${results.attempted}`)
+  console.log(`   Successful: ${results.successful}`)
+  console.log(`   Skipped (already processed): ${results.skipped}`)
+  console.log(`   Failed: ${results.failed.length}`)
+  
+  if (results.failed.length > 0) {
+    console.log('\n❌ Failed songs:')
+    results.failed.forEach(f => {
+      console.log(`   - ${f.song.title} by ${f.song.artist}: ${f.error}`)
+    })
+  }
+  
+  // Clear processing state when complete
+  await clearProcessingState()
+  
+  // Update gameLogic.js
+  await updateGameLogic()
+  
+  return results
+}
+
+// Retry only previously failed songs
+export async function retryFailedSongs() {
+  // Check if there's already a job running
+  if (currentProcessingState && currentProcessingState.isRunning) {
+    throw new Error('A stem processing job is already running. Please wait for it to complete.')
+  }
+  
+  // Load the most recent processing state to get failed songs
+  const previousState = await loadProcessingState()
+  if (!previousState || !previousState.results || !previousState.results.failed || previousState.results.failed.length === 0) {
+    throw new Error('No failed songs found to retry')
+  }
+  
+  const failedSongs = previousState.results.failed.map(f => f.song)
+  console.log(`🔄 Retrying ${failedSongs.length} previously failed songs...`)
+  
+  // Ensure directories exist
+  await fs.mkdir(ORIGINALS_DIR, { recursive: true })
+  await fs.mkdir(STEMS_DIR, { recursive: true })
+  
+  const results = {
+    attempted: 0,
+    successful: 0,
+    skipped: 0,
+    failed: []
+  }
+  
+  // Save initial processing state
+  await saveProcessingState({
+    isRunning: true,
+    totalCount: failedSongs.length,
+    currentIndex: 0,
+    currentSong: null,
+    statusMessage: null,
+    startedAt: new Date().toISOString(),
+    results
+  })
+  
+  for (let i = 0; i < failedSongs.length; i++) {
+    // Check for cancellation
+    if (currentProcessingState?.shouldCancel) {
+      console.log('\n🛑 Retry cancelled by user')
+      await clearProcessingState()
+      throw new Error('Retry cancelled by user')
+    }
+    
+    const song = failedSongs[i]
+    results.attempted++
+    console.log(`\n[${results.attempted}/${failedSongs.length}] Retrying: ${song.title} by ${song.artist}`)
+    
+    // Update state before processing each song
+    await saveProcessingState({
+      isRunning: true,
+      totalCount: failedSongs.length,
+      currentIndex: i,
+      currentSong: `${song.title} by ${song.artist}`,
+      startedAt: currentProcessingState.startedAt,
+      statusMessage: null,
+      shouldCancel: false,
+      results
+    })
+    
+    try {
+      // Check if stems already exist (may have been processed manually)
+      const sanitizedTitle = `${song.artist}-${song.title}`.replace(/[^a-z0-9]/gi, '_')
+      const stemPath = path.join(STEMS_DIR, sanitizedTitle)
+      try {
+        await fs.access(path.join(stemPath, 'bass.mp3'))
+        console.log(`⏭️  Stems already exist: ${sanitizedTitle}`)
+        results.skipped++
+        
+        // Clear status message
+        await saveProcessingState({
+          isRunning: true,
+          totalCount: failedSongs.length,
+          currentIndex: i,
+          currentSong: `${song.title} by ${song.artist}`,
+          startedAt: currentProcessingState.startedAt,
+          statusMessage: null,
+          results
+        })
+        
+        continue
+      } catch {
+        // Continue processing
+      }
+      
+      // Search iTunes
+      const previewUrl = await searchItunes(song.title, song.artist)
+      
+      // Download audio
+      const audioPath = await downloadAudio(previewUrl, song.title, song.artist)
+      
+      // Update status for Demucs processing
+      await saveProcessingState({
+        isRunning: true,
+        totalCount: failedSongs.length,
+        currentIndex: i,
+        currentSong: `${song.title} by ${song.artist}`,
+        startedAt: currentProcessingState.startedAt,
+        statusMessage: '🎸 Separating audio into stems...',
+        results
+      })
+      
+      // Process with Demucs
+      await processWithDemucs(audioPath)
+      results.successful++
+      
+      // Clear status message after success
+      await saveProcessingState({
+        isRunning: true,
+        totalCount: failedSongs.length,
+        currentIndex: i,
+        currentSong: `${song.title} by ${song.artist}`,
+        startedAt: currentProcessingState.startedAt,
+        statusMessage: null,
+        results
+      })
+      
+      // Add a small delay between songs to avoid rate limits (2 seconds)
+      if (i < failedSongs.length - 1) {
+        await sleep(2000)
+      }
+      
+    } catch (error) {
+      // If cancelled, propagate error to stop processing
+      if (error.message === 'CANCELLED') {
+        console.log('\n🛑 Retry cancelled during wait')
+        await clearProcessingState()
+        throw new Error('Retry cancelled by user')
+      }
+      
+      console.error(`❌ Failed again: ${song.title} - ${error.message}`)
+      results.failed.push({ song, error: error.message })
+      
+      // If we failed due to rate limit after retries, add longer delay before next song
+      if (error.message.includes('RATE_LIMIT') || error.message.includes('Rate limit')) {
+        const pauseMsg = '⏸️  Pausing 30 seconds due to rate limits before continuing...'
+        console.log(pauseMsg)
+        await saveProcessingState({
+          isRunning: true,
+          totalCount: failedSongs.length,
+          currentIndex: i,
+          currentSong: `${song.title} by ${song.artist}`,
+          startedAt: currentProcessingState.startedAt,
+          statusMessage: pauseMsg,
+          results
+        })
+        await sleep(30000)
+      }
+      
+      // Clear status message
+      await saveProcessingState({
+        isRunning: true,
+        totalCount: failedSongs.length,
+        currentIndex: i,
+        currentSong: `${song.title} by ${song.artist}`,
+        startedAt: currentProcessingState.startedAt,
+        statusMessage: null,
+        results
+      })
+    }
+  }
+  
+  console.log('\n✅ Retry completed!')
+  console.log(`   Attempted: ${results.attempted}`)
+  console.log(`   Successful: ${results.successful}`)
+  console.log(`   Skipped (already processed): ${results.skipped}`)
+  console.log(`   Failed: ${results.failed.length}`)
+  
+  if (results.failed.length > 0) {
+    console.log('\n❌ Still failed songs:')
+    results.failed.forEach(f => {
+      console.log(`   - ${f.song.title} by ${f.song.artist}: ${f.error}`)
+    })
+  }
+  
+  // Clear processing state when complete
+  await clearProcessingState()
+  
+  // Update gameLogic.js
+  await updateGameLogic()
+  
+  return results
+}
+
+// Process only songs that don't have stems yet
+export async function processMissingStems() {
+  // Check if there's already a job running
+  if (currentProcessingState && currentProcessingState.isRunning) {
+    throw new Error('A stem processing job is already running. Please wait for it to complete.')
+  }
+  
+  // Get current status to find songs without stems
+  const status = await getStemStatus()
+  const songsWithoutStems = status.songs
+    .filter(s => !s.hasStems)
+    .map(s => ({ title: s.title, artist: s.artist }))
+  
+  if (songsWithoutStems.length === 0) {
+    throw new Error('All songs already have stems!')
+  }
+  
+  console.log(`🔄 Processing ${songsWithoutStems.length} songs without stems...`)
+  
+  // Ensure directories exist
+  await fs.mkdir(ORIGINALS_DIR, { recursive: true })
+  await fs.mkdir(STEMS_DIR, { recursive: true })
+  
+  const results = {
+    attempted: 0,
+    successful: 0,
+    skipped: 0,
+    failed: []
+  }
+  
+  // Save initial processing state
+  await saveProcessingState({
+    isRunning: true,
+    totalCount: songsWithoutStems.length,
+    currentIndex: 0,
+    currentSong: null,
+    statusMessage: null,
+    startedAt: new Date().toISOString(),
+    results
+  })
+  
+  for (let i = 0; i < songsWithoutStems.length; i++) {
+    // Check for cancellation
+    if (currentProcessingState?.shouldCancel) {
+      console.log('\n🛑 Processing cancelled by user')
+      await clearProcessingState()
+      throw new Error('Processing cancelled by user')
+    }
+    
+    const song = songsWithoutStems[i]
+    results.attempted++
+    console.log(`\n[${results.attempted}/${songsWithoutStems.length}] ${song.title} by ${song.artist}`)
+    
+    // Update state before processing each song
+    await saveProcessingState({
+      isRunning: true,
+      totalCount: songsWithoutStems.length,
+      currentIndex: i,
+      currentSong: `${song.title} by ${song.artist}`,
+      startedAt: currentProcessingState.startedAt,
+      statusMessage: null,
+      shouldCancel: false,
+      results
+    })
+    
+    try {
+      // Check if stems already exist (shouldn't happen but double-check)
+      const sanitizedTitle = `${song.artist}-${song.title}`.replace(/[^a-z0-9]/gi, '_')
+      const stemPath = path.join(STEMS_DIR, sanitizedTitle)
+      try {
+        await fs.access(path.join(stemPath, 'bass.mp3'))
+        console.log(`⏭️  Stems already exist: ${sanitizedTitle}`)
+        results.skipped++
+        continue
+      } catch {
+        // Continue processing
+      }
+      
+      // Search iTunes
+      const previewUrl = await searchItunes(song.title, song.artist)
+      
+      // Download audio
+      const audioPath = await downloadAudio(previewUrl, song.title, song.artist)
+      
+      // Update status for Demucs processing
+      await saveProcessingState({
+        isRunning: true,
+        totalCount: songsWithoutStems.length,
+        currentIndex: i,
+        currentSong: `${song.title} by ${song.artist}`,
+        startedAt: currentProcessingState.startedAt,
+        statusMessage: '🎸 Separating audio into stems...',
+        results
+      })
+      
+      // Process with Demucs
+      await processWithDemucs(audioPath)
+      results.successful++
+      
+      // Clear status message after success
+      await saveProcessingState({
+        isRunning: true,
+        totalCount: songsWithoutStems.length,
+        currentIndex: i,
+        currentSong: `${song.title} by ${song.artist}`,
+        startedAt: currentProcessingState.startedAt,
+        statusMessage: null,
+        results
+      })
+      
+      // Add a small delay between songs to avoid rate limits (2 seconds)
+      if (i < songsWithoutStems.length - 1) {
+        await sleep(2000)
+      }
+      
+    } catch (error) {
+      // If cancelled, propagate error to stop processing
+      if (error.message === 'CANCELLED') {
+        console.log('\n🛑 Processing cancelled during retry')
+        await clearProcessingState()
+        throw new Error('Processing cancelled by user')
+      }
+      
+      console.error(`❌ Failed: ${song.title} - ${error.message}`)
+      results.failed.push({ song, error: error.message })
+      
+      // If we failed due to rate limit after retries, add longer delay before next song
+      if (error.message.includes('RATE_LIMIT') || error.message.includes('Rate limit')) {
+        const pauseMsg = '⏸️  Pausing 30 seconds due to rate limits before continuing...'
+        console.log(pauseMsg)
+        
+        await saveProcessingState({
+          isRunning: true,
+          totalCount: songsWithoutStems.length,
+          currentIndex: i,
+          currentSong: `${song.title} by ${song.artist}`,
+          startedAt: currentProcessingState.startedAt,
+          statusMessage: pauseMsg,
+          results
+        })
+        
+        await sleep(30000)
+        
+        // Clear status after pause
+        await saveProcessingState({
+          isRunning: true,
+          totalCount: songsWithoutStems.length,
+          currentIndex: i,
+          currentSong: `${song.title} by ${song.artist}`,
+          startedAt: currentProcessingState.startedAt,
+          statusMessage: null,
+          results
+        })
+      }
+    }
+  }
+  
+  console.log('\n✅ Missing stems processing completed!')
   console.log(`   Attempted: ${results.attempted}`)
   console.log(`   Successful: ${results.successful}`)
   console.log(`   Skipped (already processed): ${results.skipped}`)

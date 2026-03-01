@@ -419,6 +419,15 @@
   transform: none;
 }
 
+.admin-button.retry-button {
+  background: #e67e22;
+  margin-top: 10px;
+}
+
+.admin-button.retry-button:hover {
+  background: #d35400;
+}
+
 .interrupted-job-banner {
   background: rgba(255, 193, 7, 0.15);
   border: 2px solid #ffc107;
@@ -473,6 +482,63 @@
   color: #e65100;
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+.retry-banner {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 193, 7, 0.15) 100%);
+  border-left: 4px solid #ff9800;
+  border-radius: 6px;
+  color: #e65100;
+  font-weight: 600;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.1);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.25);
+  }
+}
+
+.processing-complete {
+  background: rgba(76, 175, 80, 0.15);
+  border-left: 4px solid #4caf50;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.processing-complete h4 {
+  margin: 0 0 0.5rem 0;
+  color: #2e7d32;
+  font-size: 1rem;
+}
+
+.processing-complete p {
+  margin: 0.25rem 0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.processing-complete details {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.processing-complete details summary {
+  cursor: pointer;
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+.processing-complete details summary:hover {
+  text-decoration: underline;
 }
 
 .admin-note {

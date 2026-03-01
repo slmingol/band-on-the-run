@@ -1,6 +1,6 @@
 import express from 'express'
 import cors from 'cors'
-import { processStemsForTopSongs, getStemStatus, checkForInterruptedJob, getProcessingState, resumeInterruptedJob } from './stem-processor.js'
+import { processStemsForTopSongs, getStemStatus, checkForInterruptedJob, getProcessingState, resumeInterruptedJob, retryFailedSongs, cancelProcessing, processMissingStems } from './stem-processor.js'
 import { enrichAllSongs, getEnrichedSongs, needsRefresh, getItunesApiStatus } from './song-enrichment.js'
 
 const app = express()
@@ -140,6 +140,58 @@ app.post('/api/stems/process', async (req, res) => {
     
     res.json({ 
       message: `Started processing stems for top ${count} songs`,
+      status: 'processing'
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Retry failed songs
+app.post('/api/stems/retry-failed', async (req, res) => {
+  try {
+    // Start retry processing in background
+    retryFailedSongs()
+      .then(result => {
+        console.log('✅ Failed songs retry completed:', result)
+      })
+      .catch(error => {
+        console.error('❌ Failed songs retry failed:', error)
+      })
+    
+    res.json({ 
+      message: 'Started retrying previously failed songs',
+      status: 'processing'
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Cancel current processing
+app.post('/api/stems/cancel', async (req, res) => {
+  try {
+    const result = await cancelProcessing()
+    res.json(result)
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+})
+
+// Process only songs without stems
+app.post('/api/stems/process-missing', async (req, res) => {
+  try {
+    // Start processing in background
+    processMissingStems()
+      .then(result => {
+        console.log('✅ Missing stems processing completed:', result)
+      })
+      .catch(error => {
+        console.error('❌ Missing stems processing failed:', error)
+      })
+    
+    res.json({ 
+      message: 'Started processing songs without stems',
       status: 'processing'
     })
   } catch (error) {
