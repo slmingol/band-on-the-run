@@ -57,8 +57,13 @@ function App() {
       <LibraryStats />
       
       <header className="app-header">
-        <h1>🎵 Band on the Run</h1>
-        <p className="tagline">Guess the song, one instrument at a time!</p>
+        <div className="header-content">
+          <img src="/images/slow_paw_mickey_guitar_w_cigarette_transparent.png" alt="Band on the Run Logo" className="app-logo" />
+          <div className="header-text">
+            <h1>Band on the Run</h1>
+            <p className="tagline">Guess the song, one instrument at a time!</p>
+          </div>
+        </div>
       </header>
 
       {currentView === 'menu' && (
