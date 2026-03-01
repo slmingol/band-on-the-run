@@ -245,9 +245,18 @@ function Game({ mode, onBack, onShowStats }) {
   }, [currentSong])
 
   const skipInstrument = () => {
+    const newGuesses = [...guesses, 'SKIPPED']
+    setGuesses(newGuesses)
+    
     if (currentInstrument < maxInstruments - 1) {
+      // Reveal next instrument
       setCurrentInstrument(currentInstrument + 1)
-      setGuesses([...guesses, 'SKIPPED'])
+    } else {
+      // Skipped last instrument - game over!
+      pauseAudio()
+      setIsPlaying(false)
+      setIsGameOver(true)
+      setHasWon(false)
     }
   }
 
@@ -325,9 +334,8 @@ function Game({ mode, onBack, onShowStats }) {
             <button 
               onClick={skipInstrument}
               className="skip-button"
-              disabled={currentInstrument >= maxInstruments - 1}
             >
-              ⏭️ Skip to Next Instrument
+              ⏭️ {currentInstrument >= maxInstruments - 1 ? 'Give Up' : 'Skip to Next Instrument'}
             </button>
           )}
           
