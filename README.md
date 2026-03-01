@@ -325,6 +325,108 @@ Stem files are generated automatically using the admin panel:
 
 See [STEM_MANAGEMENT.md](STEM_MANAGEMENT.md) for detailed stem processing documentation.
 
+## Deployment to Remote Server
+
+### Copying Data to Remote Server
+
+When deploying to a remote server running Docker containers, you need to copy the application data (stems and song metadata).
+
+#### Required Files to Copy
+
+1. **Audio stems** - `public/audio/stems/` directory
+2. **Song metadata** - `public/top-songs.json` 
+3. **Backend song list** - `scripts/top-songs.json`
+
+#### Using rsync (Recommended)
+
+Rsync efficiently copies only changed files and shows progress:
+
+```bash
+# Copy public directory (includes audio stems and top-songs.json)
+rsync -avz --progress ./public/ root@remote-server:~/docker_apps/bandontherun/public/
+
+# Copy scripts directory (includes top-songs.json for backend)
+rsync -avz --progress ./scripts/ root@remote-server:~/docker_apps/bandontherun/scripts/
+```
+
+**Options explained:**
+- `-a` = archive mode (preserves permissions, timestamps)
+- `-v` = verbose output
+- `-z` = compress during transfer
+- `--progress` = show transfer progress
+
+#### Alternative: scp (Simple Copy)
+
+For one-time transfers:
+
+```bash
+# Copy entire directories
+scp -r ./public root@remote-server:~/docker_apps/bandontherun/
+scp -r ./scripts root@remote-server:~/docker_apps/bandontherun/
+```
+
+#### Alternative: tar + ssh (Best for large data)
+
+Compress and stream in one command:
+
+```bash
+# Copy public directory
+tar czf - ./public | ssh root@remote-server "cd ~/docker_apps/bandontherun && tar xzf -"
+
+# Copy scripts directory
+tar czf - ./scripts | ssh root@remote-server "cd ~/docker_apps/bandontherun && tar xzf -"
+```
+
+#### Verify After Copy
+
+On the remote server:
+
+```bash
+# Check stem files count
+ls ~/docker_apps/bandontherun/public/audio/stems/htdemucs/ | wc -l
+
+# Verify song metadata exists
+ls -lh ~/docker_apps/bandontherun/public/top-songs.json
+ls -lh ~/docker_apps/bandontherun/scripts/top-songs.json
+```
+
+### Docker Compose Configuration
+
+The docker-compose files automatically mount the required directories:
+
+```yaml
+services:
+  frontend:
+    ports:
+      - "3434:80"
+    volumes:
+      - ./public/audio/stems:/usr/share/nginx/html/audio/stems:ro
+  
+  backend:
+    ports:
+      - "3435:3001"
+    volumes:
+      - ./public/audio:/app/public/audio
+      - ./scripts:/app/scripts:ro
+```
+
+**Ports:**
+- Frontend: http://localhost:3434
+- Backend API: http://localhost:3435
+
+### Starting the Application
+
+After copying data to the remote server:
+
+```bash
+# Using prebuilt images from GitHub Container Registry
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+
+# Or build locally
+docker compose up -d --build
+```
+
 ## License
 
 MIT
