@@ -1,14 +1,271 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './Admin.css'
 import { clearSpotifyCache } from '../utils/gameLogic'
 
-function Admin({ onBack }) {
+const STEM_SERVER_URL = 'http://localhost:3001'
+
+function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   const [message, setMessage] = useState('')
+  const [stemCount, setStemCount] = useState(10)
+  const [stemStatus, setStemStatus] = useState(null)
+  const [enrichmentStatus, setEnrichmentStatus] = useState(null)
+  const [itunesStatus, setItunesStatus] = useState(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [stemServerAvailable, setStemServerAvailable] = useState(false)
+  const [libraryConfig, setLibraryConfig] = useState(null)
+  const [processingState, setProcessingState] = useState(null)
+
+  // Check if stem server is running and get status
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onBack()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onBack])
+
+  useEffect(() => {
+    const checkStemServer = async () => {
+      try {
+        const response = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
+        if (response.ok) {
+          const status = await response.json()
+          setStemStatus(status)
+          setStemServerAvailable(true)
+        }
+      } catch (error) {
+        setStemServerAvailable(false)
+      }
+    }
+    
+    const checkEnrichmentStatus = async () => {
+      try {
+        const response = await fetch(`${STEM_SERVER_URL}/api/songs/enriched`)
+        if (response.ok) {
+          const data = await response.json()
+          setEnrichmentStatus({
+            totalSongs: data.totalSongs,
+            withStems: data.withStems,
+            withPreviews: data.withPreviews,
+            lastEnriched: data.lastEnriched
+          })
+        } else if (response.status === 503) {
+          // Server is still loading, don't log error
+          console.log('⏳ Server still enriching songs...')
+        }
+      } catch (error) {
+        console.log('Enrichment status not available:', error.message)
+      }
+    }
+    
+    const checkItunesStatus = async () => {
+      try {
+        const response = await fetch(`${STEM_SERVER_URL}/api/itunes/status`)
+        if (response.ok) {
+          const data = await response.json()
+          setItunesStatus(data)
+        }
+      } catch (error) {
+        console.log('iTunes status not available')
+      }
+    }
+    
+    const checkProcessingState = async () => {
+      try {
+        const response = await fetch(`${STEM_SERVER_URL}/api/stems/processing`)
+        if (response.ok) {
+          const data = await response.json()
+          setProcessingState(data)
+          
+          // Clear local processing state if backend reports not running
+          if (!data.isRunning) {
+            setIsProcessing(false)
+          }
+        }
+      } catch (error) {
+        console.log('Processing state not available')
+      }
+    }
+    
+    const fetchLibraryConfig = async () => {
+      try {
+        const response = await fetch('/config/song-library-config.json')
+        if (response.ok) {
+          const config = await response.json()
+          setLibraryConfig(config)
+        }
+      } catch (error) {
+        console.log('Library config not available')
+      }
+    }
+    
+    checkStemServer()
+    checkEnrichmentStatus()
+    checkItunesStatus()
+    checkProcessingState()
+    fetchLibraryConfig()
+    
+    // Poll status every 3 seconds for live updates
+    const interval = setInterval(() => {
+      checkStemServer()
+      checkItunesStatus()
+      checkEnrichmentStatus()
+      checkProcessingState()
+    }, 3000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  // Sync isProcessing with backend processingState
+  useEffect(() => {
+    if (processingState && !processingState.isRunning && isProcessing) {
+      setIsProcessing(false)
+    }
+  }, [processingState, isProcessing])
+
+  const handleProcessStems = async () => {
+    const count = stemCount === '' ? 10 : stemCount
+    
+    if (!count || count < 1 || count > 2500) {
+      setMessage('❌ Count must be between 1 and 2500')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+
+    setIsProcessing(true)
+    setMessage(`🎵 Starting processing for top ${count} songs... Check the terminal running "npm run stem-server" for detailed progress.`)
+
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/stems/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count })
+      })
+
+      if (response.ok) {
+        setMessage(`✅ Processing started! Watch the terminal for real-time progress. This will take approximately ${Math.ceil(count * 10 / 60)} minutes. Status updates every 30 seconds...`)
+        
+        // Auto-refresh status every 30 seconds while processing
+        const interval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
+            if (statusResponse.ok) {
+              const status = await statusResponse.json()
+              setStemStatus(status)
+              setMessage(`⏳ Processing... ${status.processed}/${count} songs completed. Check terminal for details.`)
+            }
+          } catch (err) {
+            // Silently fail, user can manually refresh
+          }
+        }, 30000)
+        
+        // Stop auto-refresh after estimated completion time + buffer
+        setTimeout(() => {
+          clearInterval(interval)
+          setIsProcessing(false)
+          refreshStemStatus()
+        }, (count * 10 + 60) * 1000)
+      } else {
+        const error = await response.json()
+        setMessage(`❌ Failed: ${error.error}`)
+        setIsProcessing(false)
+      }
+    } catch (error) {
+      setMessage('❌ Stem server not running! Start it with: npm run stem-server')
+      setIsProcessing(false)
+    }
+  }
+
+  const refreshStemStatus = async () => {
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
+      if (response.ok) {
+        const status = await response.json()
+        setStemStatus(status)
+      }
+      
+      const enrichResponse = await fetch(`${STEM_SERVER_URL}/api/songs/enriched`)
+      if (enrichResponse.ok) {
+        const data = await enrichResponse.json()
+        setEnrichmentStatus({
+          totalSongs: data.totalSongs,
+          withStems: data.withStems,
+          withPreviews: data.withPreviews,
+          lastEnriched: data.lastEnriched
+        })
+      }
+      
+      setMessage('✅ Status refreshed!')
+      setTimeout(() => setMessage(''), 2000)
+    } catch (error) {
+      setMessage('❌ Failed to refresh status')
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
+
+  const handleResumeJob = async () => {
+    setMessage('🔄 Resuming interrupted job...')
+    
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/stems/resume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (response.ok) {
+        setMessage('✅ Resumed processing! Check the terminal for progress.')
+        setTimeout(() => setMessage(''), 3000)
+      } else {
+        const error = await response.json()
+        setMessage(`❌ Failed: ${error.error}`)
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch (error) {
+      setMessage('❌ Stem server not running!')
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
 
   const handleClearCache = () => {
     clearSpotifyCache()
     setMessage('✅ Cache cleared! Songs will be reloaded on next game.')
     setTimeout(() => setMessage(''), 3000)
+  }
+
+  const handleRefreshEnrichment = async () => {
+    if (!stemServerAvailable) {
+      setMessage('❌ Stem server not running! Start it with: npm run stem-server')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+
+    setMessage('⏳ Triggering enrichment refresh... This may take 1-2 minutes.')
+    
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/songs/refresh`, {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        setMessage('✅ Enrichment refresh started! Check terminal for progress. Refreshing status in 5 seconds...')
+        
+        // Wait a bit then refresh status
+        setTimeout(async () => {
+          await refreshStemStatus()
+          setMessage('✅ Enrichment completed and status refreshed!')
+          setTimeout(() => setMessage(''), 3000)
+        }, 5000)
+      } else {
+        const error = await response.json()
+        setMessage(`❌ Failed: ${error.error}`)
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch (error) {
+      setMessage('❌ Failed to trigger refresh. Make sure stem server is running.')
+      setTimeout(() => setMessage(''), 3000)
+    }
   }
 
   const handleClearStats = () => {
@@ -20,6 +277,17 @@ function Admin({ onBack }) {
     }
   }
 
+  const handleClearAllCache = () => {
+    if (confirm('This will clear ALL cache and data. The page will reload. Continue?')) {
+      localStorage.clear()
+      sessionStorage.clear()
+      onBack() // Dismiss the admin modal
+      setTimeout(() => {
+        window.location.reload() // Reload the page after a brief moment
+      }, 100)
+    }
+  }
+
   return (
     <div className="admin">
       <div className="admin-container">
@@ -28,14 +296,362 @@ function Admin({ onBack }) {
           <h2>⚙️ Admin Settings</h2>
         </div>
 
+        <div className="admin-section theme-selector-admin">
+          <h3>🎨 Theme</h3>
+          <div className="theme-options">
+            <button 
+              className={`theme-option ${themePreference === 'light' ? 'active' : ''}`}
+              onClick={() => onThemeChange('light')}
+              title="Light theme"
+            >
+              ☀️ Light
+            </button>
+            <button 
+              className={`theme-option ${themePreference === 'dark' ? 'active' : ''}`}
+              onClick={() => onThemeChange('dark')}
+              title="Dark theme"
+            >
+              🌙 Dark
+            </button>
+            <button 
+              className={`theme-option ${themePreference === 'system' ? 'active' : ''}`}
+              onClick={() => onThemeChange('system')}
+              title="Follow system preference"
+            >
+              💻 System
+            </button>
+          </div>
+          {themePreference === 'system' && (
+            <span className="theme-info">Currently using: {effectiveTheme}</span>
+          )}
+        </div>
+
+        {stemStatus && enrichmentStatus && (
+          <div className="admin-section library-stats">
+            <h3>📚 Library Statistics</h3>
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-value">{enrichmentStatus.totalSongs}</div>
+                <div className="stat-label">Total Songs</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">{stemStatus.processed}</div>
+                <div className="stat-label">With Stems</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">{enrichmentStatus.withPreviews}</div>
+                <div className="stat-label">iTunes Previews</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">
+                  {enrichmentStatus.totalSongs - stemStatus.processed - enrichmentStatus.withPreviews}
+                </div>
+                <div className="stat-label">No Audio</div>
+              </div>
+            </div>
+            
+            <div className="enrichment-details">
+              <div className="enrichment-row">
+                <span className="enrichment-label">🎸 Stem Coverage:</span>
+                <span className="enrichment-value">
+                  {Math.round((stemStatus.processed / enrichmentStatus.totalSongs) * 100)}%
+                  <small> ({stemStatus.processed}/{enrichmentStatus.totalSongs})</small>
+                </span>
+              </div>
+              <div className="enrichment-row">
+                <span className="enrichment-label">🎵 iTunes Success:</span>
+                <span className="enrichment-value">
+                  {enrichmentStatus.totalSongs - stemStatus.processed > 0 
+                    ? Math.round((enrichmentStatus.withPreviews / (enrichmentStatus.totalSongs - stemStatus.processed)) * 100)
+                    : 0}%
+                  <small> ({enrichmentStatus.withPreviews}/{enrichmentStatus.totalSongs - stemStatus.processed})</small>
+                </span>
+              </div>
+              {stemStatus.storage && (
+                <div className="enrichment-row">
+                  <span className="enrichment-label">💾 Storage Used:</span>
+                  <span className="enrichment-value">
+                    {stemStatus.storage.totalFormatted}
+                    <small> ({stemStatus.storage.stemsFormatted} stems + {stemStatus.storage.originalsFormatted} originals)</small>
+                  </span>
+                </div>
+              )}
+              {enrichmentStatus.lastEnriched && (
+                <div className="enrichment-row">
+                  <span className="enrichment-label">🕒 Last Enriched:</span>
+                  <span className="enrichment-value">
+                    {new Date(enrichmentStatus.lastEnriched).toLocaleString()}
+                    <small> (Auto-refreshes every 23h)</small>
+                  </span>
+                </div>
+              )}
+              {enrichmentStatus.withPreviews === 0 && enrichmentStatus.totalSongs > stemStatus.processed && (
+                <div className="enrichment-warning">
+                  ⚠️ iTunes API is currently blocking automated requests. Using long-tail enrichment approach.
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <small>
+                      <strong>Long-tail strategy:</strong> Only 3 random songs enriched per 23-hour cycle with 60s+ delays and randomization.
+                      At this rate, all {enrichmentStatus.totalSongs - stemStatus.processed} songs needing iTunes will be enriched in ~{Math.ceil((enrichmentStatus.totalSongs - stemStatus.processed) / 3)} days.
+                      This avoids API blocking while slowly building the database.
+                    </small>
+                  </div>
+                </div>
+              )}
+              {enrichmentStatus.withPreviews > 0 && enrichmentStatus.withPreviews < (enrichmentStatus.totalSongs - stemStatus.processed) && (
+                <div className="enrichment-info">
+                  ℹ️ Long-tail enrichment in progress: {enrichmentStatus.withPreviews}/{enrichmentStatus.totalSongs - stemStatus.processed} songs enriched.
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <small>
+                      Remaining: ~{Math.ceil((enrichmentStatus.totalSongs - stemStatus.processed - enrichmentStatus.withPreviews) / 3)} days at 3 songs per day.
+                    </small>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {libraryConfig && (
+              <div className="library-progress">
+                <div className="progress-info">
+                  <span>Library Growth Progress</span>
+                  <span><strong>{stemStatus.total}</strong> / {libraryConfig.targetSongCount} songs</span>
+                </div>
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{ width: `${(stemStatus.total / libraryConfig.targetSongCount) * 100}%` }}
+                  />
+                </div>
+                <p className="progress-detail">
+                  <small>Last updated: {libraryConfig.lastUpdated} • Run <code>npm run add-songs</code> to add {libraryConfig.batchSize} more songs</small>
+                </p>
+              </div>
+            )}
+            <div className="library-info">
+              <p><small>
+                🎸 <strong>Stems:</strong> AI-separated instrument tracks (bass, drums, vocals, other) for progressive reveal<br/>
+                🎵 <strong>iTunes:</strong> 30-second preview clips from iTunes API (rate-limited)<br/>
+                ⚠️ <strong>No Audio:</strong> Songs without stems where iTunes API is unavailable
+              </small></p>
+            </div>
+          </div>
+        )}
+
+        {itunesStatus && stemServerAvailable && (
+          <div className="admin-section itunes-api-status">
+            <h3>🎵 iTunes API Status {itunesStatus.currentlyEnriching && <span className="enriching-badge">⏳ Enriching...</span>}</h3>
+            
+            <div className="api-stats-grid">
+              <div className="api-stat">
+                <div className="api-stat-value">{itunesStatus.totalRequests}</div>
+                <div className="api-stat-label">Total Requests</div>
+              </div>
+              <div className="api-stat success">
+                <div className="api-stat-value">{itunesStatus.successfulRequests}</div>
+                <div className="api-stat-label">✅ Successful</div>
+              </div>
+              <div className="api-stat rate-limited">
+                <div className="api-stat-value">{itunesStatus.rateLimitedRequests}</div>
+                <div className="api-stat-label">⚠️ Rate Limited</div>
+              </div>
+              <div className="api-stat forbidden">
+                <div className="api-stat-value">{itunesStatus.forbiddenRequests}</div>
+                <div className="api-stat-label">🚫 Forbidden</div>
+              </div>
+            </div>
+            
+            <div className="api-summary">
+              <div className="api-summary-row">
+                <span>Success Rate:</span>
+                <span className={itunesStatus.successRate > 50 ? 'good' : itunesStatus.successRate > 0 ? 'warning' : 'bad'}>
+                  {itunesStatus.successRate}%
+                </span>
+              </div>
+              {itunesStatus.lastRequestTime && (
+                <div className="api-summary-row">
+                  <span>Last Request:</span>
+                  <span>{new Date(itunesStatus.lastRequestTime).toLocaleTimeString()}</span>
+                </div>
+              )}
+              {itunesStatus.duration > 0 && (
+                <div className="api-summary-row">
+                  <span>Session Duration:</span>
+                  <span>{Math.round(itunesStatus.duration / 1000)}s</span>
+                </div>
+              )}
+            </div>
+            
+            {itunesStatus.recentRequests && itunesStatus.recentRequests.length > 0 && (
+              <div className="recent-requests">
+                <h4>Recent Requests (Last 10)</h4>
+                <div className="requests-list">
+                  {itunesStatus.recentRequests.slice(0, 10).map((req, idx) => (
+                    <div key={idx} className={`request-item ${req.status}`}>
+                      <div className="request-song">{req.song}</div>
+                      <div className="request-details">
+                        <span className="request-status">
+                          {req.status === 'success' && '✅'}
+                          {req.status === 'rate_limited' && '⚠️ Rate Limited'}
+                          {req.status === 'forbidden' && '🚫 Forbidden (403)'}
+                          {req.status === 'non_json' && '❌ Non-JSON'}
+                          {req.status === 'no_results' && '⭕ No Results'}
+                          {req.status === 'error' && '❌ Error'}
+                          {req.status === 'network_error' && '🌐 Network Error'}
+                        </span>
+                        <span className="request-time">
+                          {new Date(req.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      {req.error && <div className="request-error">{req.error}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {itunesStatus.forbiddenRequests > 10 && !itunesStatus.currentlyEnriching && (
+              <div className="api-warning">
+                <strong>⚠️ High Forbidden Rate Detected</strong>
+                <p>iTunes API is blocking most requests. System is now using long-tail enrichment:</p>
+                <ul>
+                  <li><strong>3 random songs</strong> per 23-hour cycle</li>
+                  <li><strong>60-120s random delays</strong> between requests</li>
+                  <li><strong>5min pauses</strong> every 3 songs</li>
+                  <li>Avoid pattern detection by randomizing song selection</li>
+                  <li>Build database slowly over weeks instead of hours</li>
+                </ul>
+                <p style={{ marginTop: '0.5rem' }}><small>This approach minimizes blocking while gradually enriching your library. Focus on processing stems for immediate premium experience.</small></p>
+              </div>
+            )}
+            
+            {itunesStatus.currentlyEnriching && (
+              <div className="api-info">
+                <strong>⏳ Currently Enriching</strong>
+                <p>Long-tail enrichment in progress. This will take 5-15 minutes for 3 songs with randomized delays to avoid detection.</p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="admin-section">
           <h3>Cache Management</h3>
           <p className="admin-description">
-            Clear the song cache to force reload from Deezer API. Use this if songs aren't loading properly.
+            Clear the song cache to force reload from the backend. Use this if songs aren't loading properly.
           </p>
           <button onClick={handleClearCache} className="admin-button">
             🗑️ Clear Song Cache
           </button>
+          
+          {stemServerAvailable && (
+            <>
+              <p className="admin-description" style={{ marginTop: '1rem' }}>
+                Manually trigger backend enrichment refresh to re-scan stems and retry iTunes API.
+                <small style={{ display: 'block', marginTop: '0.5rem', opacity: 0.8 }}>
+                  Note: iTunes API may still rate-limit. Backend auto-refreshes every 23 hours.
+                </small>
+              </p>
+              <button onClick={handleRefreshEnrichment} className="admin-button">
+                🔄 Refresh Backend Enrichment
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="admin-section">
+          <h3>🎸 Stem Management</h3>
+          <p className="admin-description">
+            Download and process song stems from the library. 
+            Stems enable progressive instrument revelation in gameplay.
+          </p>
+          
+          {!stemServerAvailable && (
+            <div className="admin-warning">
+              ⚠️ Stem server not running. Start it with: <code>npm run stem-server</code>
+            </div>
+          )}
+          
+          {stemStatus && (
+            <div className="stem-status">
+              <p><strong>📊 Current Status:</strong> {stemStatus.processed} / {stemStatus.total} songs processed</p>
+              <p><small>(You can process up to {stemStatus.total} songs. Add more to scripts/top-songs.json to expand the library.)</small></p>
+              <button onClick={refreshStemStatus} className="admin-button small">
+                🔄 Refresh Status
+              </button>
+            </div>
+          )}
+          
+          {processingState && processingState.isRunning && !processingState.currentSong && (
+            <div className="interrupted-job-banner">
+              <h4>⚠️ Interrupted Processing Job Detected</h4>
+              <p>
+                Started: {new Date(processingState.startedAt).toLocaleString()}<br/>
+                Progress: {processingState.currentIndex + 1}/{processingState.totalCount} songs<br/>
+                Successful: {processingState.results.successful} | 
+                Skipped: {processingState.results.skipped} | 
+                Failed: {processingState.results.failed?.length || 0}
+              </p>
+              <button onClick={handleResumeJob} className="admin-button">
+                🔄 Resume Processing
+              </button>
+            </div>
+          )}
+          
+          {processingState && processingState.isRunning && processingState.currentSong && (
+            <div className="processing-progress">
+              <p>🎵 Currently processing: <strong>{processingState.currentSong}</strong></p>
+              <p>Progress: {processingState.currentIndex + 1}/{processingState.totalCount} songs</p>
+              {processingState.statusMessage && (
+                <p className="status-message">{processingState.statusMessage}</p>
+              )}
+            </div>
+          )}
+          
+          <div className="stem-controls">
+            <label htmlFor="stem-count">
+              Process up to <input 
+                id="stem-count"
+                type="number" 
+                min="1" 
+                max="2500" 
+                value={stemCount || ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? '' : parseInt(e.target.value)
+                  setStemCount(val)
+                }}
+                onBlur={() => {
+                  // Reset to 10 if empty when user leaves field
+                  if (stemCount === '') setStemCount(10)
+                }}
+                className="stem-count-input"
+              /> songs
+            </label>
+            
+            {stemCount > 2500 && (
+              <div className="admin-error">
+                ⚠️ Maximum is 2500 songs
+              </div>
+            )}
+            {stemCount < 1 && stemCount !== '' && (
+              <div className="admin-error">
+                ⚠️ Minimum is 1 song
+              </div>
+            )}
+            
+            <button 
+              onClick={handleProcessStems} 
+              className="admin-button"
+              disabled={!stemServerAvailable || isProcessing}
+            >
+              {isProcessing ? '⏳ Processing...' : '🎵 Download & Process Stems'}
+            </button>
+          </div>
+          
+          <p className="admin-note">
+            <small>
+              ℹ️ Processing time: ~10 seconds per song. Already processed songs will be skipped.
+              Stems are stored in <code>public/audio/stems</code>. 
+              To add more songs, edit <code>scripts/top-songs.json</code>.
+            </small>
+          </p>
         </div>
 
         <div className="admin-section">
@@ -45,6 +661,16 @@ function Admin({ onBack }) {
           </p>
           <button onClick={handleClearStats} className="admin-button danger">
             ⚠️ Clear All Stats
+          </button>
+        </div>
+
+        <div className="admin-section">
+          <h3>Complete Cache Reset</h3>
+          <p className="admin-description">
+            Nuclear option: Clear ALL cached data including songs and stats. Use this to force a fresh start or fix loading issues.
+          </p>
+          <button onClick={handleClearAllCache} className="admin-button danger">
+            💥 Clear Everything & Reload
           </button>
         </div>
 

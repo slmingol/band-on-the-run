@@ -4,4 +4,6 @@ services:
     container_name: band-on-the-run
     ports:
       - "3000:80"
+    volumes:
+      - ./public/audio/stems:/app/public/audio/stems:ro
     restart: unless-stopped

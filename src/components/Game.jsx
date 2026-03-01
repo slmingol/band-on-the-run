@@ -11,16 +11,33 @@ function Game({ mode, onBack, onShowStats }) {
   const [hasWon, setHasWon] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [isPlaying, setIsPlaying] = useState(false)
-  const audioRef = useRef(null)
+  const [songNumber, setSongNumber] = useState(1)
   
-  // Web Audio API refs for frequency filtering
-  const audioContextRef = useRef(null)
-  const sourceNodeRef = useRef(null)
-  const filtersRef = useRef([])
-  const gainNodeRef = useRef(null)
+  // Refs for stem audio elements
+  const bassAudioRef = useRef(null)
+  const drumsAudioRef = useRef(null)
+  const vocalsAudioRef = useRef(null)
+  const otherAudioRef = useRef(null)
+  
+  // Single audio ref for songs without stems (iTunes URLs)
+  const singleAudioRef = useRef(null)
+
+  // Handle Escape key to go back
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onBack()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onBack])
 
   useEffect(() => {
-    // Load song based on mode (now async with Spotify integration)
+    // Reset song number when mode changes
+    setSongNumber(1)
+    
+    // Load song based on mode
     const loadSong = async () => {
       try {
         setLoadError(null)
@@ -29,11 +46,13 @@ function Game({ mode, onBack, onShowStats }) {
         if (mode === 'daily') {
           const song = await getSongForDay()
           console.log('📀 Daily song loaded:', song.title, 'by', song.artist)
+          console.log('🎵 Has stems:', !!song.stems)
           console.log('🎵 Has audio URL:', !!song.audioUrl)
           setCurrentSong(song)
         } else {
           const song = await getRandomSong()
           console.log('📀 Practice song loaded:', song.title, 'by', song.artist)
+          console.log('🎵 Has stems:', !!song.stems)
           console.log('🎵 Has audio URL:', !!song.audioUrl)
           setCurrentSong(song)
         }
@@ -46,177 +65,143 @@ function Game({ mode, onBack, onShowStats }) {
     loadSong()
   }, [mode])
 
-  // Cleanup audio context on unmount
-  useEffect(() => {
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close()
-      }
-    }
-  }, [])
-
-  // Setup Web Audio API with frequency filters
-  const setupAudioFilters = () => {
-    if (!audioContextRef.current) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext
-      audioContextRef.current = new AudioContext()
-    }
-
-    const context = audioContextRef.current
-    const audioElement = audioRef.current
-
-    // Create source node if it doesn't exist
-    if (!sourceNodeRef.current) {
-      sourceNodeRef.current = context.createMediaElementSource(audioElement)
-    }
-
-    // Define frequency bands for "instruments"
-    // Each band represents a different part of the mix
-    const frequencyBands = [
-      { name: '🎸 Bass', type: 'lowpass', frequency: 250, Q: 1.0 },      // Only bass frequencies
-      { name: '🥁 Low-Mids', type: 'bandpass', frequency: 500, Q: 1.0 }, // Add mid-low frequencies
-      { name: '🎹 Mids', type: 'bandpass', frequency: 1500, Q: 1.0 },    // Add mid frequencies
-      { name: '🎤 Vocals', type: 'bandpass', frequency: 3000, Q: 1.0 },  // Add vocal range
-      { name: '🎺 Highs', type: 'highpass', frequency: 4000, Q: 1.0 },   // Add high frequencies
-      { name: '✨ Full Mix', type: 'allpass', frequency: 1000, Q: 1.0 }  // Full frequency range
-    ]
-
-    // Clear existing filters
-    filtersRef.current.forEach(filter => filter.disconnect())
-    filtersRef.current = []
-
-    // Create filter chain based on current instrument level
-    let previousNode = sourceNodeRef.current
-
-    // Create a combined filter based on revealed instruments
-    if (currentInstrument === 0) {
-      // Only bass frequencies
-      const filter = context.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.value = 250
-      filter.Q.value = 1.0
-      previousNode.connect(filter)
-      previousNode = filter
-      filtersRef.current.push(filter)
-    } else if (currentInstrument === 1) {
-      // Bass + low-mids
-      const filter = context.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.value = 800
-      filter.Q.value = 1.0
-      previousNode.connect(filter)
-      previousNode = filter
-      filtersRef.current.push(filter)
-    } else if (currentInstrument === 2) {
-      // Bass + low-mids + mids
-      const filter = context.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.value = 2000
-      filter.Q.value = 1.0
-      previousNode.connect(filter)
-      previousNode = filter
-      filtersRef.current.push(filter)
-    } else if (currentInstrument === 3) {
-      // Bass + mids + vocals
-      const filter = context.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.value = 4000
-      filter.Q.value = 1.0
-      previousNode.connect(filter)
-      previousNode = filter
-      filtersRef.current.push(filter)
-    } else if (currentInstrument === 4) {
-      // Almost full mix (slight high cut)
-      const filter = context.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.value = 8000
-      filter.Q.value = 1.0
-      previousNode.connect(filter)
-      previousNode = filter
-      filtersRef.current.push(filter)
-    }
-    // else: Full mix (no filter)
-
-    // Create gain node for volume control
-    if (!gainNodeRef.current) {
-      gainNodeRef.current = context.createGain()
-    }
+  const loadNextSong = async () => {
+    // Increment song number
+    setSongNumber(prev => prev + 1)
     
-    previousNode.connect(gainNodeRef.current)
-    gainNodeRef.current.connect(context.destination)
+    // Reset game state
+    setGuesses([])
+    setIsGameOver(false)
+    setHasWon(false)
+    setCurrentInstrument(0)
+    setSearchTerm('')
+    setIsPlaying(false)
+    
+    // Pause any playing audio
+    pauseAudio()
+    
+    // Load new random song
+    try {
+      setLoadError(null)
+      setCurrentSong(null)
+      
+      const song = await getRandomSong()
+      console.log('📀 Next practice song loaded:', song.title, 'by', song.artist)
+      console.log('🎵 Has stems:', !!song.stems)
+      console.log('🎵 Has audio URL:', !!song.audioUrl)
+      setCurrentSong(song)
+    } catch (error) {
+      console.error('❌ Failed to load next song:', error)
+      setLoadError(error.message || 'Failed to load song. Please try again.')
+    }
   }
 
-  const maxInstruments = 6 // Fixed to 6 frequency bands
+  const maxInstruments = 4 // Bass, Drums, Vocals, Other (full mix)
 
   const playAudio = async () => {
-    if (audioRef.current && currentSong) {
-      console.log('🎵 Attempting to play:', currentSong.title)
-      console.log('📍 Audio URL:', currentSong.audioUrl)
-      console.log('🎚️ Current instrument level:', currentInstrument)
-      
-      if (!currentSong.audioUrl) {
-        console.error('❌ No audio URL available for this song!')
-        alert('Sorry, no audio preview available for this song.')
-        setIsPlaying(false)
-        return
-      }
-      
-      try {
-        // Setup or update audio filters
-        setupAudioFilters()
+    if (!currentSong) return
+
+    console.log('🎵 Attempting to play:', currentSong.title)
+    console.log('🎵 Has stems:', !!currentSong.stems)
+    console.log('🎚️ Current instrument level:', currentInstrument)
+    
+    try {
+      if (currentSong.stems) {
+        // This song has separated stems - play progressively
+        const stemRefs = [bassAudioRef, drumsAudioRef, vocalsAudioRef, otherAudioRef]
+        const stemNames = ['🎸 Bass', '🥁 Drums', '🎤 Vocals', '🎹 Other']
         
-        // Resume audio context if suspended (browser autoplay policy)
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          await audioContextRef.current.resume()
+        // Play stems up to current instrument level
+        for (let i = 0; i <= currentInstrument && i < stemRefs.length; i++) {
+          if (stemRefs[i].current) {
+            console.log(`▶️  Playing ${stemNames[i]}`)
+            await stemRefs[i].current.play()
+          }
         }
         
-        await audioRef.current.play()
-        setIsPlaying(true)
-        console.log('✅ Audio playing with filter level:', currentInstrument)
-        
-        audioRef.current.onended = () => {
+        // Set up onended handler on the bass track (all stems end together)
+        if (bassAudioRef.current) {
+          bassAudioRef.current.onended = () => {
+            setIsPlaying(false)
+          }
+        }
+      } else {
+        // Fallback to single audio URL for songs without stems
+        if (!currentSong.audioUrl) {
+          console.error('❌ No audio URL available for this song!')
+          alert('Sorry, no audio preview available for this song.')
           setIsPlaying(false)
+          return
         }
-      } catch (error) {
-        console.error('❌ Audio playback failed:', error)
-        alert(`Failed to play audio: ${error.message}`)
-        setIsPlaying(false)
+        
+        if (singleAudioRef.current) {
+          console.log('🎵 Playing single audio (no stems available)')
+          await singleAudioRef.current.play()
+          
+          singleAudioRef.current.onended = () => {
+            setIsPlaying(false)
+          }
+        }
       }
+      
+      setIsPlaying(true)
+      console.log('✅ Audio playing')
+    } catch (error) {
+      console.error('❌ Audio playback failed:', error)
+      alert(`Failed to play audio: ${error.message}`)
+      setIsPlaying(false)
     }
   }
 
-  // Update filters when instrument level changes
+  const pauseAudio = () => {
+    // Pause all stem audios
+    const stemRefs = [bassAudioRef, drumsAudioRef, vocalsAudioRef, otherAudioRef]
+    stemRefs.forEach(ref => {
+      if (ref.current) {
+        ref.current.pause()
+      }
+    })
+    
+    // Also pause single audio if it exists
+    if (singleAudioRef.current) {
+      singleAudioRef.current.pause()
+    }
+    
+    setIsPlaying(false)
+    console.log('⏸️ Audio paused')
+  }
+
+  const togglePlayPause = () => {
+    if (isPlaying) {
+      pauseAudio()
+    } else {
+      playAudio()
+    }
+  }
+
+  // When instrument level changes and audio is playing, restart with new stems
   useEffect(() => {
-    if (isPlaying && audioContextRef.current) {
-      // Pause, update filters, and resume
-      const wasPlaying = !audioRef.current.paused
-      if (wasPlaying) {
-        audioRef.current.pause()
-      }
-      
-      // Disconnect old filters
-      if (filtersRef.current.length > 0) {
-        filtersRef.current.forEach(filter => filter.disconnect())
-        if (gainNodeRef.current) {
-          gainNodeRef.current.disconnect()
-        }
-      }
-      
-      // Setup new filters
-      setupAudioFilters()
-      
-      if (wasPlaying) {
-        audioRef.current.play()
-      }
+    if (isPlaying && currentSong?.stems) {
+      // Pause all, then restart to include new stems
+      pauseAudio()
+      // Small delay to ensure pause completes
+      setTimeout(() => {
+        playAudio()
+      }, 100)
     }
   }, [currentInstrument])
 
-  const handleGuess = (songTitle) => {
-    const newGuesses = [...guesses, songTitle]
+  const handleGuess = (formattedSong) => {
+    // Extract title from "Title - Artist" format
+    const songTitle = formattedSong.split(' - ')[0]
+    
+    const newGuesses = [...guesses, formattedSong]
     setGuesses(newGuesses)
 
     if (songTitle === currentSong.title) {
       // Win!
+      pauseAudio()
+      setIsPlaying(false)
       setHasWon(true)
       setIsGameOver(true)
       
@@ -236,6 +221,8 @@ function Game({ mode, onBack, onShowStats }) {
       setCurrentInstrument(currentInstrument + 1)
     } else {
       // Lost!
+      pauseAudio()
+      setIsPlaying(false)
       setIsGameOver(true)
       setHasWon(false)
     }
@@ -246,6 +233,16 @@ function Game({ mode, onBack, onShowStats }) {
   const filteredSongs = currentSong?.songList?.filter(song =>
     song.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []
+  
+  // Debug logging
+  useEffect(() => {
+    if (currentSong) {
+      console.log('🎮 Song list available:', currentSong.songList?.length || 0, 'songs')
+      if (!currentSong.songList || currentSong.songList.length === 0) {
+        console.error('❌ No song list for guessing!')
+      }
+    }
+  }, [currentSong])
 
   const skipInstrument = () => {
     if (currentInstrument < maxInstruments - 1) {
@@ -255,12 +252,12 @@ function Game({ mode, onBack, onShowStats }) {
   }
 
   const shareResult = () => {
-    const frequencyEmojis = ['🎸', '🥁', '🎹', '🎤', '🎺', '✨']
+    const instrumentEmojis = ['🎸', '🥁', '�', '🎹']
       .slice(0, currentInstrument + 1)
       .join('')
     const result = `Band on the Run ${mode === 'daily' ? '🎯' : '🎮'}\n` +
                    `${hasWon ? '✅' : '❌'} ${guesses.length}/${maxInstruments} attempts\n` +
-                   `${frequencyEmojis}\n` +
+                   `${instrumentEmojis}\n` +
                    `${window.location.href}`
     
     navigator.clipboard.writeText(result)
@@ -288,50 +285,78 @@ function Game({ mode, onBack, onShowStats }) {
       <div className="game-container">
         <div className="game-header">
           <button onClick={onBack} className="back-button">← Back</button>
-          <h2>{mode === 'daily' ? '🎯 Daily Challenge' : '🎮 Practice Mode'}</h2>
+          <h2>
+            {mode === 'daily' ? '🎯 Daily Challenge' : (
+              currentSong?.id 
+                ? `🎮 Practice Mode - Song #${currentSong.id}` 
+                : `🎮 Practice Mode - Song #${songNumber}`
+            )}
+          </h2>
+          {mode === 'practice' && currentSong && (
+            <div className={`audio-type-badge ${currentSong.stems ? 'has-stems' : 'itunes-only'}`}>
+              {currentSong.stems ? '🎸 Stems Available' : '🎵 iTunes Preview'}
+            </div>
+          )}
         </div>
 
-        <div className="instruments-display">
-          <h3>Frequencies Revealed: {currentInstrument + 1}/{maxInstruments}</h3>
-          <div className="instruments-list">
-            {['🎸 Bass', '🥁 Low-Mids', '🎹 Mids', '🎤 Vocals', '🎺 Highs', '✨ Full Mix'].map((instrument, idx) => (
-              <span 
-                key={idx}
-                className={`instrument ${idx <= currentInstrument ? 'revealed' : 'hidden'}`}
-              >
-                {idx <= currentInstrument ? instrument : '🔒'}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="audio-player">
+        <div className="playback-controls">
           <button 
-            onClick={playAudio} 
+            onClick={togglePlayPause} 
             className="play-button"
-            disabled={isPlaying}
           >
-            {isPlaying ? '⏸️ Playing...' : '▶️ Play'}
+            {isPlaying ? '⏸️ Pause' : '▶️ Play'}
           </button>
-          <audio ref={audioRef} src={currentSong.audioUrl} />
-        </div>
-
-        <div className="guesses-display">
-          <h4>Your Guesses: {guesses.length}</h4>
-          <div className="guesses-list">
-            {guesses.map((guess, idx) => (
-              <div 
-                key={idx} 
-                className={`guess ${guess === currentSong.title ? 'correct' : 'wrong'}`}
-              >
-                {guess === 'SKIPPED' ? '⏭️ Skipped' : guess}
-              </div>
-            ))}
+          
+          <div className="instruments-display">
+            <h3>Instruments: {currentInstrument + 1}/{maxInstruments}</h3>
+            <div className="instruments-list">
+              {['🎸 Bass', '🥁 Drums', '🎤 Vocals', '🎹 Other'].map((instrument, idx) => (
+                <span 
+                  key={idx}
+                  className={`instrument ${idx <= currentInstrument ? 'revealed' : 'hidden'}`}
+                >
+                  {idx <= currentInstrument ? instrument : '🔒'}
+                </span>
+              ))}
+            </div>
           </div>
+          
+          {/* Audio elements for stem playback */}
+          {currentSong.stems ? (
+            <>
+              <audio ref={bassAudioRef} src={currentSong.stems.bass} />
+              <audio ref={drumsAudioRef} src={currentSong.stems.drums} />
+              <audio ref={vocalsAudioRef} src={currentSong.stems.vocals} />
+              <audio ref={otherAudioRef} src={currentSong.stems.other} />
+            </>
+          ) : (
+            <audio ref={singleAudioRef} src={currentSong.audioUrl} />
+          )}
         </div>
 
         {!isGameOver && (
-          <div className="guess-input">
+          <div className="guess-section">
+            <div className="guesses-header">
+              <h4>Your Guesses: {guesses.length}</h4>
+              {guesses.length > 0 && (
+                <div className="guesses-compact">
+                  {guesses.map((guess, idx) => {
+                    const guessTitle = guess === 'SKIPPED' ? 'SKIPPED' : guess.split(' - ')[0]
+                    const isCorrect = guessTitle === currentSong.title
+                    return (
+                      <span 
+                        key={idx} 
+                        className={`guess-chip ${isCorrect ? 'correct' : 'wrong'}`}
+                        title={guess === 'SKIPPED' ? 'Skipped' : guess}
+                      >
+                        {guess === 'SKIPPED' ? '⏭️' : (isCorrect ? '✅' : '❌')}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            
             <input
               type="text"
               value={searchTerm}
@@ -342,15 +367,27 @@ function Game({ mode, onBack, onShowStats }) {
             
             {searchTerm && (
               <div className="song-suggestions">
-                {filteredSongs.slice(0, 10).map((song, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleGuess(song)}
-                    className="suggestion-button"
-                  >
-                    {song}
-                  </button>
-                ))}
+                {filteredSongs.length > 0 ? (
+                  filteredSongs.slice(0, 10).map((song, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleGuess(song)}
+                      className="suggestion-button"
+                    >
+                      {song}
+                    </button>
+                  ))
+                ) : (
+                  <div className="no-results">
+                    No songs found. Try a different search.
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {!currentSong.songList && (
+              <div className="loading-songs">
+                ⏳ Loading song list...
               </div>
             )}
             
@@ -359,8 +396,30 @@ function Game({ mode, onBack, onShowStats }) {
               className="skip-button"
               disabled={currentInstrument >= maxInstruments - 1}
             >
-              ⏭️ Reveal More Frequencies
+              ⏭️ Skip to Next Instrument
             </button>
+            
+            {mode === 'practice' && (
+              <div className="practice-controls">
+                <button 
+                  onClick={() => {
+                    pauseAudio()
+                    setIsPlaying(false)
+                    setIsGameOver(true)
+                    setHasWon(false)
+                  }}
+                  className="reveal-button"
+                >
+                  👁️ Reveal Song
+                </button>
+                <button 
+                  onClick={loadNextSong}
+                  className="skip-song-button"
+                >
+                  ⏩ Skip Song
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -372,7 +431,7 @@ function Game({ mode, onBack, onShowStats }) {
             {hasWon && (
               <p className="result-stats">
                 You guessed it in {guesses.length} {guesses.length === 1 ? 'attempt' : 'attempts'} 
-                with {currentInstrument + 1} {currentInstrument + 1 === 1 ? 'frequency band' : 'frequency bands'}!
+                with {currentInstrument + 1} {currentInstrument + 1 === 1 ? 'instrument' : 'instruments'}!
               </p>
             )}
             
@@ -383,6 +442,11 @@ function Game({ mode, onBack, onShowStats }) {
               <button onClick={onShowStats} className="stats-button">
                 📊 View Stats
               </button>
+              {mode === 'practice' && (
+                <button onClick={loadNextSong} className="next-song-button">
+                  ⏭️ Next Song
+                </button>
+              )}
               <button onClick={onBack} className="menu-button">
                 🏠 Back to Menu
               </button>

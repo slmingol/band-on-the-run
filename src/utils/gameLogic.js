@@ -1,26 +1,48 @@
 import { enrichSongWithSpotify } from './spotifyApi.js'
 
-// Song database - will be enriched with Spotify preview URLs
-const BASE_SONGS = [
+// Songs with separated stems (bass, drums, vocals, other)
+const SONGS_WITH_STEMS = [
   {
     title: "Bohemian Rhapsody",
     artist: "Queen",
-    instruments: ["🎹 Piano", "🎸 Guitar", "🥁 Drums", "🎤 Vocals", "🎺 Brass"]
+    stems: {
+      bass: "/audio/stems/htdemucs/Queen-Bohemian_Rhapsody/bass.mp3",
+      drums: "/audio/stems/htdemucs/Queen-Bohemian_Rhapsody/drums.mp3",
+      vocals: "/audio/stems/htdemucs/Queen-Bohemian_Rhapsody/vocals.mp3",
+      other: "/audio/stems/htdemucs/Queen-Bohemian_Rhapsody/other.mp3"
+    },
+    instruments: ["🎸 Bass", "🥁 Drums", "🎤 Vocals", "🎹 Other"]
   },
   {
     title: "Hotel California",
     artist: "Eagles",
-    instruments: ["🎸 Guitar", "🥁 Drums", "🎹 Keyboard", "🎤 Vocals", "🎸 Bass"]
-  },
-  {
-    title: "Billie Jean",
-    artist: "Michael Jackson",
-    instruments: ["🥁 Drums", "🎸 Bass", "🎹 Synth", "🎤 Vocals", "🎺 Horns"]
+    stems: {
+      bass: "/audio/stems/htdemucs/Eagles-Hotel_California/bass.mp3",
+      drums: "/audio/stems/htdemucs/Eagles-Hotel_California/drums.mp3",
+      vocals: "/audio/stems/htdemucs/Eagles-Hotel_California/vocals.mp3",
+      other: "/audio/stems/htdemucs/Eagles-Hotel_California/other.mp3"
+    },
+    instruments: ["🎸 Bass", "🥁 Drums", "🎤 Vocals", "🎹 Other"]
   },
   {
     title: "Sweet Child O' Mine",
     artist: "Guns N' Roses",
-    instruments: ["🎸 Guitar", "🥁 Drums", "🎸 Bass", "🎤 Vocals", "🎹 Keyboard"]
+    stems: {
+      bass: "/audio/stems/htdemucs/Guns_N'_Roses-Sweet_Child_O'_Mine/bass.mp3",
+      drums: "/audio/stems/htdemucs/Guns_N'_Roses-Sweet_Child_O'_Mine/drums.mp3",
+      vocals: "/audio/stems/htdemucs/Guns_N'_Roses-Sweet_Child_O'_Mine/vocals.mp3",
+      other: "/audio/stems/htdemucs/Guns_N'_Roses-Sweet_Child_O'_Mine/other.mp3"
+    },
+    instruments: ["🎸 Bass", "🥁 Drums", "🎤 Vocals", "🎹 Other"]
+  }
+]
+
+// Songs that will use iTunes preview URLs (fallback for songs without stems)
+const BASE_SONGS = [
+  {
+    title: "Billie Jean",
+    artist: "Michael Jackson",
+    instruments: ["🥁 Drums", "🎸 Bass", "🎹 Synth", "🎤 Vocals", "🎺 Horns"]
   },
   {
     title: "Smells Like Teen Spirit",
@@ -79,59 +101,173 @@ const BASE_SONGS = [
   }
 ]
 
-// Cache for Spotify-enriched songs
+// Combine both types of songs
+const ALL_SONGS = [...SONGS_WITH_STEMS, ...BASE_SONGS]
+
+// Cache for enriched songs
 let ENRICHED_SONGS = null
+const STEM_SERVER_URL = 'http://localhost:3001'
 const ENRICHED_CACHE_KEY = 'band_on_the_run_enriched_songs'
+const DATABASE_SONGS_KEY = 'band_on_the_run_database_songs'
 const CACHE_EXPIRY_KEY = 'band_on_the_run_cache_expiry'
 const CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours
 
-// Get or create enriched songs with Spotify data
-async function getEnrichedSongs() {
-  // TEMPORARY: Force clear old Spotify cache
-  const cached = localStorage.getItem(ENRICHED_CACHE_KEY)
-  if (cached) {
-    const parsedCache = JSON.parse(cached)
-    // If cache has songs without audioUrl, it's old Spotify cache - clear it
-    if (parsedCache.some(s => !s.audioUrl)) {
-      console.log('🗑️ Clearing old Spotify cache...')
-      localStorage.removeItem(ENRICHED_CACHE_KEY)
-      localStorage.removeItem(CACHE_EXPIRY_KEY)
+// Load songs from database (client-side fallback)
+async function loadSongsFromDatabase() {
+  try {
+    const response = await fetch('/top-songs.json')
+    if (!response.ok) {
+      console.error('Failed to load song database, falling back to hardcoded songs')
+      return null
     }
+    const songs = await response.json()
+    // Add database ID (1-indexed) to each song
+    return songs.map((song, index) => ({
+      ...song,
+      id: index + 1
+    }))
+  } catch (error) {
+    console.error('Error loading song database:', error)
+    return null
   }
-  
-  // Check cache first
-  const freshCached = localStorage.getItem(ENRICHED_CACHE_KEY)
-  const expiry = localStorage.getItem(CACHE_EXPIRY_KEY)
-  
-  if (freshCached && expiry && Date.now() < parseInt(expiry)) {
-    ENRICHED_SONGS = JSON.parse(freshCached)
-    console.log('✅ Using cached songs from iTunes')
-    return ENRICHED_SONGS
+}
+
+// Load enriched songs from backend
+async function loadEnrichedSongsFromBackend() {
+  try {
+    const response = await fetch(`${STEM_SERVER_URL}/api/songs/enriched`)
+    if (!response.ok) {
+      console.error('Failed to load enriched songs from backend')
+      return null
+    }
+    const data = await response.json()
+    console.log(`📚 Loaded ${data.totalSongs} enriched songs from backend`)
+    console.log(`✅ ${data.withStems} with stems, ${data.withPreviews} with iTunes previews`)
+    console.log(`🕐 Last enriched: ${new Date(data.lastEnriched).toLocaleString()}`)
+    return data.songs
+  } catch (error) {
+    console.error('Error loading enriched songs from backend:', error)
+    return null
   }
-  
-  // If already enriched in memory, return it
+}
+
+// Get or create enriched songs
+async function getEnrichedSongs() {
+  // Check if we have cached enriched songs
   if (ENRICHED_SONGS) {
     return ENRICHED_SONGS
   }
   
-  // Enrich songs with iTunes preview data
-  console.log('🎵 Fetching song previews from iTunes (no auth required)...')
-  const enrichedPromises = BASE_SONGS.map(song => enrichSongWithSpotify(song))
-  ENRICHED_SONGS = await Promise.all(enrichedPromises)
+  // Try to load from backend first
+  const backendSongs = await loadEnrichedSongsFromBackend()
   
-  // Cache the enriched songs
-  localStorage.setItem(ENRICHED_CACHE_KEY, JSON.stringify(ENRICHED_SONGS))
-  localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString())
+  if (backendSongs && backendSongs.length > 0) {
+    ENRICHED_SONGS = backendSongs
+    return ENRICHED_SONGS
+  }
   
-  const withPreviews = ENRICHED_SONGS.filter(s => s.audioUrl).length
-  console.log(`✅ Songs loaded! ${withPreviews}/${ENRICHED_SONGS.length} have audio previews from iTunes`)
+  // Fallback to old client-side behavior if backend is unavailable
+  console.log('⚠️ Backend unavailable, falling back to client-side enrichment')
+  return await getEnrichedSongsFallback()
+}
+
+// Fallback: old client-side enrichment logic
+async function getEnrichedSongsFallback() {
+  // Load songs from database
+  const databaseSongs = await loadSongsFromDatabase()
   
-  return ENRICHED_SONGS
+  if (databaseSongs && databaseSongs.length > 0) {
+    console.log(`📚 Loaded ${databaseSongs.length} songs from database`)
+    
+    // Match songs with available stems
+    const songsWithStems = databaseSongs.map(song => {
+      const stemSong = SONGS_WITH_STEMS.find(
+        s => s.title === song.title && s.artist === song.artist
+      )
+      if (stemSong) {
+        return { ...song, stems: stemSong.stems }
+      }
+      return song
+    })
+    
+    console.log('🎵 Enriching songs with iTunes previews (this may take a moment)...')
+    
+    // Enrich songs without stems with iTunes previews in batches
+    const batchSize = 50
+    const enrichedSongs = []
+    
+    for (let i = 0; i < songsWithStems.length; i += batchSize) {
+      const batch = songsWithStems.slice(i, i + batchSize)
+      const enrichedBatch = await Promise.all(
+        batch.map(async (song) => {
+          if (!song.stems) {
+            const enriched = await enrichSongWithSpotify(song)
+            return { ...enriched, id: song.id }
+          }
+          return song
+        })
+      )
+      enrichedSongs.push(...enrichedBatch)
+      
+      if (i + batchSize < songsWithStems.length) {
+        console.log(`⏳ Enriched ${enrichedSongs.length}/${songsWithStems.length} songs...`)
+      }
+    }
+    
+    const withStems = enrichedSongs.filter(s => s.stems).length
+    const withPreviews = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
+    console.log(`✅ Songs ready: ${withStems} with stems, ${withPreviews} with iTunes previews`)
+    
+    // Cache the results
+    localStorage.setItem(DATABASE_SONGS_KEY, JSON.stringify(enrichedSongs))
+    localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString())
+    
+    ENRICHED_SONGS = enrichedSongs
+    return enrichedSongs
+  }
+  
+  // Fallback to old behavior if database load fails
+  console.log('⚠️ Using hardcoded song list as fallback')
+  // Songs with stems don't need caching - they're local files
+  // Only enrich songs without stems (BASE_SONGS) with iTunes URLs
+  
+  // Check cache for iTunes-enriched songs
+  const cachedFallback = localStorage.getItem(ENRICHED_CACHE_KEY)
+  const expiryFallback = localStorage.getItem(CACHE_EXPIRY_KEY)
+  
+  let enrichedBaseSongs = []
+  
+  if (cachedFallback && expiryFallback && Date.now() < parseInt(expiryFallback)) {
+    console.log('✅ Using cached iTunes songs from fallback')
+    enrichedBaseSongs = JSON.parse(cachedFallback)
+  } else {
+    // Enrich BASE_SONGS with iTunes preview data
+    if (BASE_SONGS.length > 0) {
+      console.log('🎵 Fetching song previews from iTunes...')
+      const enrichedPromises = BASE_SONGS.map(song => enrichSongWithSpotify(song))
+      enrichedBaseSongs = await Promise.all(enrichedPromises)
+      
+      // Cache the enriched songs
+      localStorage.setItem(ENRICHED_CACHE_KEY, JSON.stringify(enrichedBaseSongs))
+      localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString())
+      
+      ENRICHED_SONGS = enrichedBaseSongs
+      
+      const withPreviews = enrichedBaseSongs.filter(s => s.audioUrl).length
+      console.log(`✅ iTunes songs loaded! ${withPreviews}/${enrichedBaseSongs.length} have audio previews`)
+    }
+  }
+  
+  // Combine songs with stems and iTunes-enriched songs
+  const allSongs = [...SONGS_WITH_STEMS, ...enrichedBaseSongs]
+  console.log(`🎵 Total songs available: ${allSongs.length} (${SONGS_WITH_STEMS.length} with stems, ${enrichedBaseSongs.length} from iTunes)`)
+  
+  return allSongs
 }
 
 // Create a song list for guessing
 function getSongList(songs) {
-  return songs.map(s => s.title).sort()
+  return songs.map(s => `${s.title} - ${s.artist}`).sort()
 }
 
 // Simple seeded random number generator
@@ -153,23 +289,83 @@ export async function getSongForDay() {
   }
 }
 
-// Get random song for practice mode
-export async function getRandomSong() {
+// Track recently played songs to avoid repetition
+const RECENTLY_PLAYED_KEY = 'band_on_the_run_recently_played'
+const MAX_RECENT_SONGS = 20 // Remember last 20 songs
+
+function getRecentlyPlayed() {
+  try {
+    const recent = localStorage.getItem(RECENTLY_PLAYED_KEY)
+    return recent ? JSON.parse(recent) : []
+  } catch {
+    return []
+  }
+}
+
+function addToRecentlyPlayed(songId) {
+  const recent = getRecentlyPlayed()
+  // Add to front, remove duplicates, keep only last MAX_RECENT_SONGS
+  const updated = [songId, ...recent.filter(id => id !== songId)].slice(0, MAX_RECENT_SONGS)
+  localStorage.setItem(RECENTLY_PLAYED_KEY, JSON.stringify(updated))
+}
+
+// Get random song for practice mode with improved distribution
+export async function getRandomSong(preferStems = true) {
   const songs = await getEnrichedSongs()
-  const index = Math.floor(Math.random() * songs.length)
+  const recentlyPlayed = getRecentlyPlayed()
+  
+  // Filter out recently played songs
+  const availableSongs = songs.filter(s => !recentlyPlayed.includes(s.id))
+  const songsToUse = availableSongs.length > 0 ? availableSongs : songs
+  
+  let selectedSong
+  
+  if (preferStems) {
+    // 80% chance to pick from songs with stems (increased from 50%)
+    const songsWithStems = songsToUse.filter(s => s.stems)
+    
+    if (songsWithStems.length > 0 && Math.random() < 0.8) {
+      // Use shuffling for better distribution across all stem songs
+      const shuffled = [...songsWithStems].sort(() => Math.random() - 0.5)
+      selectedSong = shuffled[0]
+    } else {
+      // Pick from all available songs
+      const shuffled = [...songsToUse].sort(() => Math.random() - 0.5)
+      selectedSong = shuffled[0]
+    }
+  } else {
+    // Random from all available songs
+    const shuffled = [...songsToUse].sort(() => Math.random() - 0.5)
+    selectedSong = shuffled[0]
+  }
+  
+  // Track this song as recently played
+  addToRecentlyPlayed(selectedSong.id)
   
   return {
-    ...songs[index],
+    ...selectedSong,
     songList: getSongList(songs)
+  }
+}
+
+// Preload songs in the background (call on app startup to avoid delays)
+export async function preloadSongs() {
+  console.log('🎵 Preloading song database from backend...')
+  try {
+    await getEnrichedSongs()
+    console.log('✅ Song database preloaded and ready!')
+  } catch (error) {
+    console.error('⚠️ Failed to preload songs:', error)
   }
 }
 
 // Clear iTunes cache (useful for debugging or forcing refresh)
 export function clearSpotifyCache() {
   localStorage.removeItem(ENRICHED_CACHE_KEY)
+  localStorage.removeItem(DATABASE_SONGS_KEY)
   localStorage.removeItem(CACHE_EXPIRY_KEY)
   ENRICHED_SONGS = null
-  console.log('🗑️ iTunes cache cleared')
+  console.log('🗑️ Song cache cleared - songs will be reloaded on next play')
 }
 
 // LocalStorage keys

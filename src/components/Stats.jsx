@@ -9,6 +9,16 @@ function Stats({ onBack }) {
     setStats(getStats())
   }, [])
 
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onBack()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onBack])
+
   if (!stats) {
     return <div className="stats loading">Loading stats...</div>
   }

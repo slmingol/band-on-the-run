@@ -8,5 +8,6 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - ./public/audio/stems:/app/public/audio/stems:ro
     environment:
       - VITE_HMR_HOST=localhost

@@ -168,3 +168,154 @@ The repository uses GitHub Actions for automated builds:
 3. **cleanup-*.yml** - Cleans up old artifacts and Docker images
 
 See `.github/workflows/` for workflow details.
+
+## Stem Files in Docker
+
+### Volume Mount for Stem Files
+
+All Docker Compose configurations include a bind mount for stem files:
+
+```yaml
+volumes:
+  - ./public/audio/stems:/app/public/audio/stems:ro
+```
+
+This mounts your local `public/audio/stems` directory into the container at `/app/public/audio/stems` (read-only).
+
+### Using a Custom Stem Location
+
+**Option 1: Modify docker-compose.yml**
+
+```yaml
+services:
+  band-on-the-run:
+    volumes:
+      - /custom/path/to/stems:/app/public/audio/stems:ro
+```
+
+**Option 2: Use .env file**
+
+Create `.env` in project root:
+```bash
+STEMS_PATH=/mnt/storage/band-stems
+```
+
+Update docker-compose.yml:
+```yaml
+volumes:
+  - ${STEMS_PATH:-./public/audio/stems}:/app/public/audio/stems:ro
+```
+
+### Copying Stem Files to/from Container
+
+```bash
+# Copy from container to host
+docker cp band-on-the-run:/app/public/audio/stems ./stems-backup
+
+# Copy from host to container
+docker cp ./stems-backup/ band-on-the-run:/app/public/audio/stems
+
+# Or use bind mount (recommended)
+# Stems in ./public/audio/stems are automatically available in container
+```
+
+### Sharing Stems Across Multiple Servers
+
+**Option 1: Network Storage (NFS)**
+
+```yaml
+volumes:
+  - /mnt/nfs/shared-stems:/app/public/audio/stems:ro
+```
+
+Mount NFS share on host:
+```bash
+sudo apt-get install nfs-common
+sudo mkdir -p /mnt/nfs/shared-stems
+echo "nfs-server:/export/stems /mnt/nfs/shared-stems nfs defaults 0 0" | sudo tee -a /etc/fstab
+sudo mount -a
+```
+
+**Option 2: Docker Volume with NFS Driver**
+
+```yaml
+volumes:
+  stems-data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=nfs-server,rw
+      device: ":/export/stems"
+
+services:
+  band-on-the-run:
+    volumes:
+      - stems-data:/app/public/audio/stems:ro
+```
+
+### Transfer Stems Between Servers
+
+```bash
+# Using rsync
+rsync -avz --progress \
+  public/audio/stems/ \
+  user@remote-server:/path/to/band-on-the-run/public/audio/stems/
+
+# Using tar archive
+tar -czf stems.tar.gz -C public/audio stems/
+scp stems.tar.gz user@remote-server:/tmp/
+# On remote server:
+tar -xzf /tmp/stems.tar.gz -C /path/to/band-on-the-run/public/audio/
+
+# Using Docker save/load (entire image with stems)
+docker save band-on-the-run:latest | gzip > band-app.tar.gz
+scp band-app.tar.gz user@remote-server:/tmp/
+# On remote server:
+docker load < /tmp/band-app.tar.gz
+```
+
+### Verify Stems in Container
+
+```bash
+# Check if stems directory is mounted
+docker exec band-on-the-run ls -la /app/public/audio/stems/
+
+# List stem songs
+docker exec band-on-the-run ls /app/public/audio/stems/htdemucs/ | head -10
+
+# Count total stem folders
+docker exec band-on-the-run sh -c "ls /app/public/audio/stems/htdemucs/ | wc -l"
+
+# Check single song structure
+docker exec band-on-the-run ls -lh /app/public/audio/stems/htdemucs/2Pac_California_Love/
+```
+
+### Permissions
+
+If you encounter permission issues:
+
+```bash
+# Make stems readable (on host)
+chmod -R 755 public/audio/stems
+
+# Or change ownership if needed
+sudo chown -R 1000:1000 public/audio/stems
+
+# Then restart container
+docker-compose restart
+```
+
+### Development vs Production
+
+- **Development**: Stems mounted read-write for processing
+- **Production**: Stems mounted read-only (`:ro`) for security
+
+```yaml
+# Development
+volumes:
+  - ./public/audio/stems:/app/public/audio/stems  # Read-write
+
+# Production
+volumes:
+  - ./public/audio/stems:/app/public/audio/stems:ro  # Read-only
+```

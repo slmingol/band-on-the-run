@@ -4,10 +4,34 @@ import Game from './components/Game'
 import Menu from './components/Menu'
 import Stats from './components/Stats'
 import Admin from './components/Admin'
+import StemStatus from './components/StemStatus'
+import LibraryStats from './components/LibraryStats'
+import { preloadSongs } from './utils/gameLogic'
+import { useTheme } from './utils/useTheme'
 
 function App() {
   const [currentView, setCurrentView] = useState('menu') // menu, daily, practice, stats, admin
   const [gameMode, setGameMode] = useState(null)
+  const [isPreloading, setIsPreloading] = useState(true)
+  const [version, setVersion] = useState('1.0.0')
+  const { themePreference, effectiveTheme, setTheme } = useTheme()
+
+  // Fetch version from version.json
+  useEffect(() => {
+    fetch('/version.json')
+      .then(res => res.json())
+      .then(data => setVersion(data.version))
+      .catch(() => setVersion('1.0.0'))
+  }, [])
+
+  // Preload songs in background on app startup
+  useEffect(() => {
+    const loadSongs = async () => {
+      await preloadSongs()
+      setIsPreloading(false)
+    }
+    loadSongs()
+  }, [])
 
   const startGame = (mode) => {
     setGameMode(mode)
@@ -29,6 +53,9 @@ function App() {
 
   return (
     <div className="app">
+      <StemStatus />
+      <LibraryStats />
+      
       <header className="app-header">
         <h1>🎵 Band on the Run</h1>
         <p className="tagline">Guess the song, one instrument at a time!</p>
@@ -47,11 +74,23 @@ function App() {
       )}
 
       {currentView === 'admin' && (
-        <Admin onBack={backToMenu} />
+        <Admin 
+          onBack={backToMenu}
+          themePreference={themePreference}
+          effectiveTheme={effectiveTheme}
+          onThemeChange={setTheme}
+        />
+      )}
+
+      {isPreloading && (
+        <div className="preload-status">🎵 Loading song library...</div>
       )}
 
       <footer className="app-footer">
-        <p>Made with ❤️ | v0.1.0</p>
+        <div className="version-info">
+          © {new Date().getFullYear()} Band on the Run
+          <span className="version-number">v{version}</span>
+        </div>
       </footer>
     </div>
   )

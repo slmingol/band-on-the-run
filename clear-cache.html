@@ -11,10 +11,11 @@
 <body>
     <h1>Clearing Band on the Run Cache...</h1>
     <script>
-        localStorage.removeItem('band_on_the_run_enriched_songs');
-        localStorage.removeItem('band_on_the_run_cache_expiry');
-        console.log('✅ Cache cleared!');
-        document.body.innerHTML = '<h1>✅ Cache Cleared!</h1><p>Close this tab and refresh your game.</p>';
+        // Clear all cache and data
+        localStorage.clear();
+        sessionStorage.clear();
+        console.log('✅ All cache cleared!');
+        document.body.innerHTML = '<h1>✅ Cache Cleared!</h1><p>Close this tab and refresh your game at <a href="http://localhost:5173">localhost:5173</a></p>';
     </script>
 </body>
 </html>

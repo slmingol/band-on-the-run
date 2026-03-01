@@ -3,4 +3,6 @@ services:
     build: .
     ports:
       - "3000:80"
+    volumes:
+      - ./public/audio/stems:/app/public/audio/stems:ro
     restart: unless-stopped

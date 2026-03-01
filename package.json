@@ -1,14 +1,20 @@
 {
   "name": "band-on-the-run",
   "private": true,
-  "version": "0.3.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "download-audio": "node scripts/download-and-split.js",
+    "stem-server": "node server/index.js",
+    "add-songs": "node scripts/add-songs.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -6,7 +6,7 @@
 
 .app-header {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 1.45rem 1rem;
   background: linear-gradient(135deg, var(--primary-color) 0%, #1aa34a 100%);
 }
 
@@ -22,11 +22,53 @@
 }
 
 .app-footer {
-  margin-top: auto;
-  text-align: center;
-  padding: 2rem 1rem;
-  opacity: 0.6;
-  font-size: 0.9rem;
+  position: fixed;
+  bottom: 0.5rem;
+  right: 1rem;
+  z-index: 10;
+}
+
+.version-info {
+  font-size: 0.85rem;
+  opacity: 0.4;
+  color: #888;
+  text-align: right;
+  line-height: 1.4;
+  transition: opacity 0.2s ease;
+}
+
+.version-info:hover {
+  opacity: 0.7;
+}
+
+.version-number {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 0.1rem;
+}
+
+.preload-status {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: pulse 2s ease-in-out infinite;
+  z-index: 100;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 768px) {

@@ -101,6 +101,12 @@ export async function enrichSongWithSpotify(song) {
       return song
     }
     
+    // For now, use original iTunes URL directly
+    // CORS proxy was causing audio to cut in/out
+    // Web Audio API filtering won't work, but audio will be stable
+    console.log('🎵 Using direct iTunes URL (no CORS proxy)')
+    console.log('📍 Audio URL:', trackData.audioUrl)
+    
     return {
       ...song,
       audioUrl: trackData.audioUrl,
