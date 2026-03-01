@@ -5,6 +5,8 @@
   <br clear="left"/>
 </div>
 
+---
+
 ## Features
 
 - 🎯 **Daily Puzzle Mode** - One puzzle per day, same for everyone
