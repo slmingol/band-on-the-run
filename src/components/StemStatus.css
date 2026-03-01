@@ -1,0 +1,146 @@
+.stem-status-widget {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  cursor: default;
+  user-select: none;
+}
+
+.stem-status-widget:hover {
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.stem-status-widget::after {
+  content: 'Songs with separated instrument stems';
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stem-status-widget:hover::after {
+  opacity: 1;
+}
+
+.stem-status-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stem-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.stem-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stem-count {
+  font-size: 0.95rem;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.stem-count strong {
+  color: var(--primary-color, #1db954);
+  font-size: 1.1rem;
+}
+
+.stem-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+/* Processing indicator */
+.stem-status-widget.processing {
+  border-color: rgba(29, 185, 84, 0.4);
+  animation: processingGlow 2s ease-in-out infinite;
+}
+
+@keyframes processingGlow {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(29, 185, 84, 0.3);
+  }
+}
+
+.stem-status-widget.processing .stem-icon {
+  animation: spin 2s linear infinite;
+}
+
+.stem-status-widget.processing .stem-label {
+  color: var(--primary-color, #1db954);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .stem-status-widget {
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .stem-icon {
+    font-size: 1.25rem;
+  }
+
+  .stem-count {
+    font-size: 0.85rem;
+  }
+
+  .stem-count strong {
+    font-size: 1rem;
+  }
+
+  .stem-label {
+    font-size: 0.65rem;
+  }
+}
