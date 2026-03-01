@@ -1,9 +1,10 @@
-<div align="left">
-  <img src="public/images/slow_paw_mickey_guitar_w_cigarette_transparent.png" alt="Band on the Run Logo" width="200" align="left" style="margin-right: 20px;">
-  <h1 style="border-bottom: none !important; padding-bottom: 0; margin-bottom: 0.5em;">🎵 Band on the Run</h1>
-  <p>A music guessing game where you guess the song one instrument at a time!</p>
-  <br clear="left"/>
+<div align="center">
+  <img src="public/images/slow_paw_mickey_guitar_w_cigarette_transparent.png" alt="Band on the Run Logo" width="200">
 </div>
+
+# 🎵 Band on the Run
+
+A music guessing game where you guess the song one instrument at a time!
 
 ## Features
 
