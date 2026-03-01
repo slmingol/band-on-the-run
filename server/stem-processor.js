@@ -152,7 +152,7 @@ function sleep(ms) {
 
 // Search iTunes for a song and get preview URL with retry logic
 async function searchItunes(title, artist, retryCount = 0) {
-  const maxRetries = 30 // Keep retrying for a long time
+  const maxRetries = 5 // Fail fast to test other songs and detect when rate limit lifts
   const query = encodeURIComponent(`${title} ${artist}`)
   const url = `https://itunes.apple.com/search?term=${query}&media=music&entity=song&limit=1`
   
