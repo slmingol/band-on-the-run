@@ -30,3 +30,6 @@ dist-ssr
 VITE_SPOTIFY_CLIENT_ID
 VITE_SPOTIFY_CLIENT_SECRET
 server/processing-state.json
+
+# Audio files (generated/downloaded content)
+public/audio/
