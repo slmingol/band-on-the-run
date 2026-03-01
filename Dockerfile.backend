@@ -1,5 +1,21 @@
 FROM node:20-alpine
 
+# Build arguments
+ARG VERSION=1.5.5
+ARG BUILD_DATE
+ARG VCS_REF
+
+# Add OCI labels
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.authors="Band on the Run" \
+      org.opencontainers.image.url="https://github.com/smingolelli/band-on-the-run" \
+      org.opencontainers.image.source="https://github.com/smingolelli/band-on-the-run" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.title="Band on the Run - Backend" \
+      org.opencontainers.image.description="Backend server for Band on the Run music game" \
+      org.opencontainers.image.licenses="MIT"
+
 WORKDIR /app
 
 # Copy package files
@@ -13,6 +29,9 @@ COPY server ./server
 
 # Create directory for audio files
 RUN mkdir -p public/audio/stems
+
+# Set version environment variable
+ENV VERSION=${VERSION}
 
 # Expose backend port
 EXPOSE 3001
