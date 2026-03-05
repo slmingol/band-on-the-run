@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import './Admin.css'
 import { clearSpotifyCache } from '../utils/gameLogic'
 
-const STEM_SERVER_URL = 'http://localhost:3435'
+const STEM_SERVER_URL = '' // Use relative URLs for API calls
 
 function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   const [message, setMessage] = useState('')

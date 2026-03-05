@@ -1,5 +1,7 @@
 import { enrichSongWithSpotify } from './spotifyApi.js'
 
+const STEM_SERVER_URL = '' // Use relative URLs for API calls
+
 // Songs with separated stems (bass, drums, vocals, other)
 const SONGS_WITH_STEMS = [
   {
