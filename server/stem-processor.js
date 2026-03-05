@@ -16,7 +16,21 @@ const GAME_LOGIC_PATH = path.join(PROJECT_ROOT, 'src', 'utils', 'gameLogic.js')
 const PROCESSING_STATE_PATH = path.join(PROJECT_ROOT, 'server', 'processing-state.json')
 
 // Configuration: Disable iTunes API to avoid rate limiting (set to 0 to disable)
-const ENABLE_ITUNES_API = parseInt(process.env.ENABLE_ITUNES_API || '0', 10)
+let ENABLE_ITUNES_API = parseInt(process.env.ENABLE_ITUNES_API || '0', 10)
+
+// Getter and setter for iTunes API config
+export function getItunesApiConfig() {
+  return {
+    enabled: ENABLE_ITUNES_API === 1,
+    envDefault: parseInt(process.env.ENABLE_ITUNES_API || '0', 10)
+  }
+}
+
+export function setItunesApiEnabled(enabled) {
+  ENABLE_ITUNES_API = enabled ? 1 : 0
+  console.log(`🎵 iTunes API ${enabled ? 'enabled' : 'disabled'} via admin panel`)
+  return getItunesApiConfig()
+}
 
 // Processing state management
 let currentProcessingState = null

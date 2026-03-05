@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import { readFile } from 'fs/promises'
-import { processStemsForTopSongs, getStemStatus, checkForInterruptedJob, getProcessingState, resumeInterruptedJob, retryFailedSongs, cancelProcessing, processMissingStems } from './stem-processor.js'
+import { processStemsForTopSongs, getStemStatus, checkForInterruptedJob, getProcessingState, resumeInterruptedJob, retryFailedSongs, cancelProcessing, processMissingStems, getItunesApiConfig, setItunesApiEnabled } from './stem-processor.js'
 import { enrichAllSongs, getEnrichedSongs, needsRefresh, getItunesApiStatus } from './song-enrichment.js'
 
 const app = express()
@@ -210,6 +210,34 @@ app.post('/api/stems/process-missing', async (req, res) => {
     res.json({ 
       message: 'Started processing songs without stems',
       status: 'processing'
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get iTunes API configuration
+app.get('/api/config/itunes', (req, res) => {
+  try {
+    const config = getItunesApiConfig()
+    res.json(config)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Set iTunes API enabled/disabled
+app.post('/api/config/itunes', async (req, res) => {
+  try {
+    const { enabled } = req.body
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled must be a boolean' })
+    }
+    
+    const config = setItunesApiEnabled(enabled)
+    res.json({ 
+      message: `iTunes API ${enabled ? 'enabled' : 'disabled'}`,
+      config
     })
   } catch (error) {
     res.status(500).json({ error: error.message })

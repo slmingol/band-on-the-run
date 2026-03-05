@@ -15,6 +15,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   const [libraryConfig, setLibraryConfig] = useState(null)
   const [processingState, setProcessingState] = useState(null)
   const [lastCompletedResults, setLastCompletedResults] = useState(null)
+  const [itunesApiEnabled, setItunesApiEnabled] = useState(false)
 
   // Check if stem server is running and get status
   useEffect(() => {
@@ -78,6 +79,18 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
       }
     }
     
+    const checkItunesApiConfig = async () => {
+      try {
+        const response = await fetch(`${STEM_SERVER_URL}/api/config/itunes`)
+        if (response.ok) {
+          const data = await response.json()
+          setItunesApiEnabled(data.enabled)
+        }
+      } catch (error) {
+        console.log('iTunes API config not available')
+      }
+    }
+    
     const checkProcessingState = async () => {
       try {
         const response = await fetch(`${STEM_SERVER_URL}/api/stems/processing`)
@@ -118,6 +131,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
     checkStemServer()
     checkEnrichmentStatus()
     checkItunesStatus()
+    checkItunesApiConfig()
     checkProcessingState()
     fetchLibraryConfig()
     
@@ -125,6 +139,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
     const interval = setInterval(() => {
       checkStemServer()
       checkItunesStatus()
+      checkItunesApiConfig()
       checkEnrichmentStatus()
       checkProcessingState()
     }, 3000)
@@ -276,6 +291,29 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
       }
     } catch (error) {
       setMessage('❌ Failed to cancel processing')
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
+
+  const handleToggleItunesApi = async (enabled) => {
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/config/itunes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      })
+
+      if (response.ok) {
+        setItunesApiEnabled(enabled)
+        setMessage(`✅ iTunes API ${enabled ? 'enabled' : 'disabled'}`)
+        setTimeout(() => setMessage(''), 3000)
+      } else {
+        const error = await response.json()
+        setMessage(`❌ Failed: ${error.error}`)
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch (error) {
+      setMessage('❌ Failed to update iTunes API setting')
       setTimeout(() => setMessage(''), 3000)
     }
   }
@@ -864,6 +902,33 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 </p>
               </div>
             )}
+            
+            <div className="itunes-api-toggle" style={{ 
+              marginTop: '1.5rem', 
+              padding: '1rem', 
+              backgroundColor: itunesApiEnabled ? '#e8f5e9' : '#fff3e0',
+              border: `1px solid ${itunesApiEnabled ? '#4caf50' : '#ff9800'}`,
+              borderRadius: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <strong>🎵 iTunes API for New Songs</strong>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#666' }}>
+                    {itunesApiEnabled 
+                      ? '⚠️ Enabled - May encounter rate limiting after ~20 requests'
+                      : '✅ Disabled - Prevents rate limiting (recommended for existing stems)'}
+                  </p>
+                </div>
+                <label className="toggle-switch" style={{ marginLeft: '1rem' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={itunesApiEnabled}
+                    onChange={(e) => handleToggleItunesApi(e.target.checked)}
+                  />
+                  <span className="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
             
             <div className="manual-action" style={{ marginTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '2rem' : '0', paddingTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '2rem' : '0', borderTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '1px solid #ddd' : 'none' }}>
               <p className="action-description">
