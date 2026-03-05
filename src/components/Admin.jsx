@@ -963,50 +963,138 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 style={{ 
                   width: '100%',
                   backgroundColor: showNeedingItunes ? '#f5f5f5' : '#2196f3',
-                  color: showNeedingItunes ? '#333' : 'white'
+                  color: showNeedingItunes ? '#333' : 'white',
+                  textAlign: 'left',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
                 }}
               >
-                {showNeedingItunes ? '▼ Hide' : '▶ View'} Songs Needing iTunes URLs
-                {songsNeedingItunes && ` (${songsNeedingItunes.count})`}
+                <span>
+                  {showNeedingItunes ? '▼ Hide' : '▶ View'} Songs Without Stems
+                </span>
+                {songsNeedingItunes && (
+                  <span style={{ fontSize: '0.85rem' }}>
+                    {songsNeedingItunes.count} total 
+                    {songsNeedingItunes.withUrls > 0 && ` (${songsNeedingItunes.withUrls} have URLs)`}
+                  </span>
+                )}
               </button>
               
               {showNeedingItunes && songsNeedingItunes && (
                 <div style={{ 
                   marginTop: '1rem', 
-                  padding: '1rem', 
-                  backgroundColor: '#f9f9f9',
+                  padding: '1.5rem', 
+                  backgroundColor: '#fff',
                   border: '1px solid #ddd',
                   borderRadius: '8px',
-                  maxHeight: '400px',
+                  maxHeight: '500px',
                   overflowY: 'auto'
                 }}>
-                  <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold' }}>
-                    📋 {songsNeedingItunes.count} songs need iTunes URLs (out of {songsNeedingItunes.totalSongs} total)
-                  </p>
-                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: '#666' }}>
-                    These songs don't have stems and need iTunes preview URLs to be playable.
-                  </p>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>
+                      📋 Songs Without Stems ({songsNeedingItunes.count} total)
+                    </h4>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '1rem', 
+                      fontSize: '0.85rem',
+                      marginBottom: '1rem'
+                    }}>
+                      <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
+                        ✅ {songsNeedingItunes.withUrls} with iTunes URLs
+                      </span>
+                      <span style={{ color: '#ff9800', fontWeight: 'bold' }}>
+                        ⚠️ {songsNeedingItunes.withoutUrls} need URLs
+                      </span>
+                    </div>
+                  </div>
+                  
                   {songsNeedingItunes.count === 0 ? (
-                    <p style={{ fontStyle: 'italic', color: '#4caf50' }}>
+                    <p style={{ fontStyle: 'italic', color: '#4caf50', margin: '0' }}>
                       ✅ All songs have either stems or iTunes URLs!
                     </p>
                   ) : (
-                    <ul style={{ 
-                      margin: '0', 
-                      padding: '0 0 0 1.5rem',
-                      listStyle: 'none'
-                    }}>
-                      {songsNeedingItunes.songs.map((song, index) => (
-                        <li key={song.id} style={{ 
-                          marginBottom: '0.5rem',
-                          padding: '0.5rem',
-                          backgroundColor: index % 2 === 0 ? 'white' : '#f5f5f5',
-                          borderRadius: '4px'
-                        }}>
-                          <strong>#{song.id}</strong> - {song.title} <span style={{ color: '#666' }}>by {song.artist}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div>
+                      {songsNeedingItunes.withUrls > 0 && (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                          <h5 style={{ 
+                            margin: '0 0 0.5rem 0', 
+                            fontSize: '0.9rem',
+                            color: '#4caf50',
+                            borderBottom: '2px solid #4caf50',
+                            paddingBottom: '0.25rem'
+                          }}>
+                            ✅ With iTunes URLs ({songsNeedingItunes.withUrls})
+                          </h5>
+                          <div style={{ fontSize: '0.85rem' }}>
+                            {songsNeedingItunes.songs
+                              .filter(s => s.hasAudio)
+                              .map((song) => (
+                                <div key={`${song.id}-${song.title}`} style={{ 
+                                  marginBottom: '0.75rem',
+                                  padding: '0.75rem',
+                                  backgroundColor: '#f0f8f0',
+                                  borderLeft: '3px solid #4caf50',
+                                  borderRadius: '4px'
+                                }}>
+                                  <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                                    #{song.id} {song.title}
+                                  </div>
+                                  <div style={{ color: '#666', marginBottom: '0.25rem' }}>
+                                    by {song.artist}
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: '0.75rem', 
+                                    color: '#2196f3',
+                                    wordBreak: 'break-all',
+                                    fontFamily: 'monospace',
+                                    backgroundColor: '#fff',
+                                    padding: '0.25rem 0.5rem',
+                                    borderRadius: '3px',
+                                    border: '1px solid #e0e0e0'
+                                  }}>
+                                    {song.audioUrl}
+                                  </div>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      )}
+                      
+                      {songsNeedingItunes.withoutUrls > 0 && (
+                        <div>
+                          <h5 style={{ 
+                            margin: '0 0 0.5rem 0', 
+                            fontSize: '0.9rem',
+                            color: '#ff9800',
+                            borderBottom: '2px solid #ff9800',
+                            paddingBottom: '0.25rem'
+                          }}>
+                            ⚠️ Missing iTunes URLs ({songsNeedingItunes.withoutUrls})
+                          </h5>
+                          <div style={{ fontSize: '0.85rem' }}>
+                            {songsNeedingItunes.songs
+                              .filter(s => !s.hasAudio)
+                              .map((song) => (
+                                <div key={`${song.id}-${song.title}`} style={{ 
+                                  marginBottom: '0.5rem',
+                                  padding: '0.5rem 0.75rem',
+                                  backgroundColor: '#fff8e1',
+                                  borderLeft: '3px solid #ff9800',
+                                  borderRadius: '4px'
+                                }}>
+                                  <div>
+                                    <strong>#{song.id}</strong> {song.title} <span style={{ color: '#666', fontSize: '0.9em' }}>by {song.artist}</span>
+                                  </div>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

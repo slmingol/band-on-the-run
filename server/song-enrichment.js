@@ -409,55 +409,94 @@ export function getEnrichedSongs() {
 
 // Get songs that need iTunes URLs (no stems, no audioUrl)
 export function getSongsNeedingItunes() {
-  // Load songs from database
-  const songs = JSON.parse(fs.readFileSync(TOP_SONGS_PATH, 'utf8'))
+  // Use enriched cache if available, otherwise load from database
+  let songsToCheck = enrichedSongsCache
   
-  // Add database IDs
-  const songsWithIds = songs.map((song, index) => ({
-    ...song,
-    id: index + 1
-  }))
-  
-  // Scan for available stems
-  const stemSongs = scanStemsDirectory()
-  
-  // Match with stems
-  const songsWithStems = songsWithIds.map(song => {
-    const stemSong = stemSongs.find(s => {
-      // Try exact match first
-      if (s.title.toLowerCase() === song.title.toLowerCase() && 
-          s.artist.toLowerCase() === song.artist.toLowerCase()) {
-        return true
-      }
-      
-      // Try partial matches
-      const stemTitleLower = s.title.toLowerCase()
-      const songTitleLower = song.title.toLowerCase()
-      const stemArtistLower = s.artist.toLowerCase()
-      const songArtistLower = song.artist.toLowerCase()
-      
-      const artistMatch = stemArtistLower.includes(songArtistLower) || 
-                          songArtistLower.includes(stemArtistLower)
-      const titleMatch = stemTitleLower.includes(songTitleLower) || 
-                        songTitleLower.includes(stemTitleLower)
-      
-      return artistMatch && titleMatch
-    })
+  if (!songsToCheck) {
+    // Load songs from database
+    const songs = JSON.parse(fs.readFileSync(TOP_SONGS_PATH, 'utf8'))
     
-    if (stemSong) {
-      return { ...song, stems: stemSong.stems, hasStems: true }
-    }
-    return { ...song, hasStems: false }
-  })
+    // Add database IDs
+    songsToCheck = songs.map((song, index) => ({
+      ...song,
+      id: index + 1
+    }))
+    
+    // Scan for available stems
+    const stemSongs = scanStemsDirectory()
+    
+    // Match with stems
+    songsToCheck = songsToCheck.map(song => {
+      const stemSong = stemSongs.find(s => {
+        // Try exact match first
+        if (s.title.toLowerCase() === song.title.toLowerCase() && 
+            s.artist.toLowerCase() === song.artist.toLowerCase()) {
+          return true
+        }
+        
+        // Try partial matches
+        const stemTitleLower = s.title.toLowerCase()
+        const songTitleLower = song.title.toLowerCase()
+        const stemArtistLower = s.artist.toLowerCase()
+        const songArtistLower = song.artist.toLowerCase()
+        
+        const artistMatch = stemArtistLower.includes(songArtistLower) || 
+                            songArtistLower.includes(stemArtistLower)
+        const titleMatch = stemTitleLower.includes(songTitleLower) || 
+                          songTitleLower.includes(stemTitleLower)
+        
+        return artistMatch && titleMatch
+      })
+      
+      if (stemSong) {
+        return { ...song, stems: stemSong.stems }
+      }
+      return song
+    })
+  }
   
-  // Filter to songs without stems and without iTunes URLs
-  const needingItunes = songsWithStems
-    .filter(s => !s.hasStems && !s.audioUrl)
-    .map((s, index) => ({
+  // Filter to songs without stems and map to clean output
+  // Remove duplicates by using a Set with unique key (title + artist)
+  const seen = new Set()
+  const needingItunes = songsToCheck
+    .filter(s => {
+      // Must not have stems
+      if (s.stems) return false
+      
+      // Create unique key
+      const key = `${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`
+      
+      // Skip if we've seen this song
+      if (seen.has(key)) return false
+      
+      seen.add(key)
+      return true
+    })
+    .map(s => ({
       id: s.id,
       title: s.title,
       artist: s.artist,
-      position: index + 1
+      audioUrl: s.audioUrl || null,
+      hasAudio: !!s.audioUrl
+    }))
+    .sort((a, b) => {
+      // Sort by: has audio first, then by ID
+      if (a.hasAudio !== b.hasAudio) {
+        return a.hasAudio ? -1 : 1  // Has audio comes first
+      }
+      return (a.id || 0) - (b.id || 0)
+    })
+  
+  const withUrls = needingItunes.filter(s => s.hasAudio).length
+  const withoutUrls = needingItunes.filter(s => !s.hasAudio).length
+  
+  return {
+    songs: needingItunes,
+    count: needingItunes.length,
+    withUrls,
+    withoutUrls,
+    totalSongs: songsToCheck.length
+  }
     }))
   
   return {
