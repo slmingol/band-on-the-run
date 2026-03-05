@@ -497,13 +497,6 @@ export function getSongsNeedingItunes() {
     withoutUrls,
     totalSongs: songsToCheck.length
   }
-    }))
-  
-  return {
-    songs: needingItunes,
-    count: needingItunes.length,
-    totalSongs: songs.length
-  }
 }
 
 // Check if cache needs refresh (optional, for manual refresh endpoints)
