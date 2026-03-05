@@ -20,6 +20,7 @@ console.log('\n' + '='.repeat(60))
 console.log('🎵  Band on the Run - Backend Server')
 console.log(`📦  Version: ${version}`)
 console.log(`🚀  Environment: ${process.env.NODE_ENV || 'development'}`)
+console.log(`🎵  iTunes API: ${parseInt(process.env.ENABLE_ITUNES_API || '0') ? 'Enabled' : 'Disabled (set ENABLE_ITUNES_API=1 to enable)'}`)
 console.log('='.repeat(60) + '\n')
 
 app.use(cors())

@@ -15,6 +15,9 @@ const STEMS_DIR = path.join(PROJECT_ROOT, 'public', 'audio', 'stems', 'htdemucs'
 const GAME_LOGIC_PATH = path.join(PROJECT_ROOT, 'src', 'utils', 'gameLogic.js')
 const PROCESSING_STATE_PATH = path.join(PROJECT_ROOT, 'server', 'processing-state.json')
 
+// Configuration: Disable iTunes API to avoid rate limiting (set to 0 to disable)
+const ENABLE_ITUNES_API = parseInt(process.env.ENABLE_ITUNES_API || '0', 10)
+
 // Processing state management
 let currentProcessingState = null
 
@@ -515,6 +518,23 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
         // Continue processing
       }
       
+      // Check if iTunes API is enabled
+      if (!ENABLE_ITUNES_API) {
+        console.log(`⏭️  Skipping ${song.title} - iTunes API disabled (set ENABLE_ITUNES_API=1 to enable)`)
+        results.skipped++
+        await saveProcessingState({
+          isRunning: true,
+          totalCount: count,
+          currentIndex: i,
+          currentSong: `${song.title} by ${song.artist}`,
+          currentStage: 'skipped',
+          startedAt: currentProcessingState.startedAt,
+          statusMessage: '⏭️  iTunes API disabled',
+          results
+        })
+        continue
+      }
+      
       // Search iTunes
       await saveProcessingState({
         ...currentProcessingState,
@@ -716,6 +736,13 @@ export async function retryFailedSongs() {
         // Continue processing
       }
       
+      // Check if iTunes API is enabled
+      if (!ENABLE_ITUNES_API) {
+        console.log(`⏭️  Skipping ${song.title} - iTunes API disabled (set ENABLE_ITUNES_API=1 to enable)`)
+        results.failed++
+        continue
+      }
+      
       // Search iTunes
       const previewUrl = await searchItunes(song.title, song.artist)
       
@@ -891,6 +918,13 @@ export async function processMissingStems() {
         continue
       } catch {
         // Continue processing
+      }
+      
+      // Check if iTunes API is enabled
+      if (!ENABLE_ITUNES_API) {
+        console.log(`⏭️  Skipping ${song.title} - iTunes API disabled (set ENABLE_ITUNES_API=1 to enable)`)
+        results.failed++
+        continue
       }
       
       // Search iTunes
