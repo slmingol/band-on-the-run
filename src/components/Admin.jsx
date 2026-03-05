@@ -934,12 +934,13 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
               padding: '1rem', 
               backgroundColor: itunesApiEnabled ? '#e8f5e9' : '#fff3e0',
               border: `1px solid ${itunesApiEnabled ? '#4caf50' : '#ff9800'}`,
-              borderRadius: '8px'
+              borderRadius: '8px',
+              color: '#333'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <strong>🎵 iTunes API for New Songs</strong>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#666' }}>
+                  <strong style={{ color: '#000' }}>🎵 iTunes API for New Songs</strong>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#555' }}>
                     {itunesApiEnabled 
                       ? '⚠️ Enabled - May encounter rate limiting after ~20 requests'
                       : '✅ Disabled - Prevents rate limiting (recommended for existing stems)'}
@@ -1036,9 +1037,10 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                                   padding: '0.75rem',
                                   backgroundColor: '#f0f8f0',
                                   borderLeft: '3px solid #4caf50',
-                                  borderRadius: '4px'
+                                  borderRadius: '4px',
+                                  color: '#333'
                                 }}>
-                                  <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                                  <div style={{ fontWeight: 'bold', marginBottom: '0.25rem', color: '#000' }}>
                                     #{song.id} {song.title}
                                   </div>
                                   <div style={{ color: '#666', marginBottom: '0.25rem' }}>
@@ -1083,10 +1085,11 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                                   padding: '0.5rem 0.75rem',
                                   backgroundColor: '#fff8e1',
                                   borderLeft: '3px solid #ff9800',
-                                  borderRadius: '4px'
+                                  borderRadius: '4px',
+                                  color: '#333'
                                 }}>
                                   <div>
-                                    <strong>#{song.id}</strong> {song.title} <span style={{ color: '#666', fontSize: '0.9em' }}>by {song.artist}</span>
+                                    <strong style={{ color: '#000' }}>#{song.id}</strong> <span style={{ color: '#000' }}>{song.title}</span> <span style={{ color: '#666', fontSize: '0.9em' }}>by {song.artist}</span>
                                   </div>
                                 </div>
                               ))
