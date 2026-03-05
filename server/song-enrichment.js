@@ -407,6 +407,66 @@ export function getEnrichedSongs() {
   }
 }
 
+// Get songs that need iTunes URLs (no stems, no audioUrl)
+export function getSongsNeedingItunes() {
+  // Load songs from database
+  const songs = JSON.parse(fs.readFileSync(TOP_SONGS_PATH, 'utf8'))
+  
+  // Add database IDs
+  const songsWithIds = songs.map((song, index) => ({
+    ...song,
+    id: index + 1
+  }))
+  
+  // Scan for available stems
+  const stemSongs = scanStemsDirectory()
+  
+  // Match with stems
+  const songsWithStems = songsWithIds.map(song => {
+    const stemSong = stemSongs.find(s => {
+      // Try exact match first
+      if (s.title.toLowerCase() === song.title.toLowerCase() && 
+          s.artist.toLowerCase() === song.artist.toLowerCase()) {
+        return true
+      }
+      
+      // Try partial matches
+      const stemTitleLower = s.title.toLowerCase()
+      const songTitleLower = song.title.toLowerCase()
+      const stemArtistLower = s.artist.toLowerCase()
+      const songArtistLower = song.artist.toLowerCase()
+      
+      const artistMatch = stemArtistLower.includes(songArtistLower) || 
+                          songArtistLower.includes(stemArtistLower)
+      const titleMatch = stemTitleLower.includes(songTitleLower) || 
+                        songTitleLower.includes(stemTitleLower)
+      
+      return artistMatch && titleMatch
+    })
+    
+    if (stemSong) {
+      return { ...song, stems: stemSong.stems, hasStems: true }
+    }
+    return { ...song, hasStems: false }
+  })
+  
+  // Filter to songs without stems and without iTunes URLs
+  const needingItunes = songsWithStems
+    .filter(s => !s.hasStems && !s.audioUrl)
+    .map((s, index) => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      position: index + 1
+    }))
+  
+  return {
+    songs: needingItunes,
+    count: needingItunes.length,
+    totalSongs: songs.length
+  }
+}
+
 // Check if cache needs refresh (optional, for manual refresh endpoints)
 export function needsRefresh() {
   if (!lastEnriched) return true

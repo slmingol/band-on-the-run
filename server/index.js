@@ -2,7 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { readFile } from 'fs/promises'
 import { processStemsForTopSongs, getStemStatus, checkForInterruptedJob, getProcessingState, resumeInterruptedJob, retryFailedSongs, cancelProcessing, processMissingStems, getItunesApiConfig, setItunesApiEnabled } from './stem-processor.js'
-import { enrichAllSongs, getEnrichedSongs, needsRefresh, getItunesApiStatus } from './song-enrichment.js'
+import { enrichAllSongs, getEnrichedSongs, needsRefresh, getItunesApiStatus, getSongsNeedingItunes } from './song-enrichment.js'
 
 const app = express()
 const PORT = 3001
@@ -91,6 +91,16 @@ app.get('/api/itunes/status', (req, res) => {
   try {
     const status = getItunesApiStatus()
     res.json(status)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get songs that need iTunes URLs
+app.get('/api/songs/needing-itunes', (req, res) => {
+  try {
+    const result = getSongsNeedingItunes()
+    res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

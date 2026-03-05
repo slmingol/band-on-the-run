@@ -16,6 +16,8 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   const [processingState, setProcessingState] = useState(null)
   const [lastCompletedResults, setLastCompletedResults] = useState(null)
   const [itunesApiEnabled, setItunesApiEnabled] = useState(false)
+  const [songsNeedingItunes, setSongsNeedingItunes] = useState(null)
+  const [showNeedingItunes, setShowNeedingItunes] = useState(false)
 
   // Check if stem server is running and get status
   useEffect(() => {
@@ -314,6 +316,30 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
       }
     } catch (error) {
       setMessage('❌ Failed to update iTunes API setting')
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
+
+  const handleViewNeedingItunes = async () => {
+    if (showNeedingItunes) {
+      // Just toggle off
+      setShowNeedingItunes(false)
+      return
+    }
+    
+    // Fetch and show
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/songs/needing-itunes`)
+      if (response.ok) {
+        const data = await response.json()
+        setSongsNeedingItunes(data)
+        setShowNeedingItunes(true)
+      } else {
+        setMessage('❌ Failed to fetch songs needing iTunes')
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch (error) {
+      setMessage('❌ Failed to connect to server')
       setTimeout(() => setMessage(''), 3000)
     }
   }
@@ -928,6 +954,62 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                   <span className="toggle-slider"></span>
                 </label>
               </div>
+            </div>
+            
+            <div style={{ marginTop: '1rem' }}>
+              <button 
+                onClick={handleViewNeedingItunes}
+                className="admin-button"
+                style={{ 
+                  width: '100%',
+                  backgroundColor: showNeedingItunes ? '#f5f5f5' : '#2196f3',
+                  color: showNeedingItunes ? '#333' : 'white'
+                }}
+              >
+                {showNeedingItunes ? '▼ Hide' : '▶ View'} Songs Needing iTunes URLs
+                {songsNeedingItunes && ` (${songsNeedingItunes.count})`}
+              </button>
+              
+              {showNeedingItunes && songsNeedingItunes && (
+                <div style={{ 
+                  marginTop: '1rem', 
+                  padding: '1rem', 
+                  backgroundColor: '#f9f9f9',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  maxHeight: '400px',
+                  overflowY: 'auto'
+                }}>
+                  <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold' }}>
+                    📋 {songsNeedingItunes.count} songs need iTunes URLs (out of {songsNeedingItunes.totalSongs} total)
+                  </p>
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: '#666' }}>
+                    These songs don't have stems and need iTunes preview URLs to be playable.
+                  </p>
+                  {songsNeedingItunes.count === 0 ? (
+                    <p style={{ fontStyle: 'italic', color: '#4caf50' }}>
+                      ✅ All songs have either stems or iTunes URLs!
+                    </p>
+                  ) : (
+                    <ul style={{ 
+                      margin: '0', 
+                      padding: '0 0 0 1.5rem',
+                      listStyle: 'none'
+                    }}>
+                      {songsNeedingItunes.songs.map((song, index) => (
+                        <li key={song.id} style={{ 
+                          marginBottom: '0.5rem',
+                          padding: '0.5rem',
+                          backgroundColor: index % 2 === 0 ? 'white' : '#f5f5f5',
+                          borderRadius: '4px'
+                        }}>
+                          <strong>#{song.id}</strong> - {song.title} <span style={{ color: '#666' }}>by {song.artist}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="manual-action" style={{ marginTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '2rem' : '0', paddingTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '2rem' : '0', borderTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '1px solid #ddd' : 'none' }}>
