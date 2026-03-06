@@ -1,0 +1,21 @@
+services:
+  frontend:
+    image: ghcr.io/slmingol/band-on-the-run:latest
+    container_name: band-frontend-prod
+    ports:
+      - "3434:80"
+    volumes:
+      - ../public/audio/stems:/usr/share/nginx/html/audio/stems:ro
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/slmingol/band-on-the-run-backend:latest
+    container_name: band-backend-prod
+    ports:
+      - "3435:3001"
+    volumes:
+      - ../public/audio:/app/public/audio
+      - ../scripts:/app/scripts:ro
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped

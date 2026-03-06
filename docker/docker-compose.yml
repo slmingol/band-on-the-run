@@ -1,0 +1,26 @@
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: band-frontend
+    ports:
+      - "3434:80"
+    volumes:
+      - ../public/audio/stems:/usr/share/nginx/html/audio/stems:ro
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: band-backend
+    ports:
+      - "3435:3001"
+    volumes:
+      - ../public/audio:/app/public/audio
+      - ../server:/app/server:ro
+      - ../scripts:/app/scripts:ro
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
