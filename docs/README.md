@@ -2,6 +2,15 @@
 
 # 🎵 Band on the Run
 
+[![Version](https://img.shields.io/github/package-json/v/slmingol/band-on-the-run?label=Version&color=brightgreen)](https://github.com/slmingol/band-on-the-run)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/slmingol/band-on-the-run/docker-build.yml?branch=main&label=Build)](https://github.com/slmingol/band-on-the-run/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![React](https://img.shields.io/badge/React-18.3.1-blue.svg)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.0.3-646CFF.svg)](https://vitejs.dev/)
+[![Node](https://img.shields.io/badge/Node-20+-green.svg)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+[![Container Registry](https://img.shields.io/badge/GHCR-Published-blue)](https://github.com/slmingol/band-on-the-run/pkgs/container/band-on-the-run)
+
 A music guessing game where you guess the song one instrument at a time!
 
 ## Features
