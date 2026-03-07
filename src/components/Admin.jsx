@@ -23,7 +23,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   const [dangerZoneUnlocked, setDangerZoneUnlocked] = useState(false)
   const [dangerZoneExpanded, setDangerZoneExpanded] = useState(false)
   const [pinInput, setPinInput] = useState('')
-  const DANGER_ZONE_PIN = import.meta.env.VITE_DANGER_ZONE_PIN || '1234' // Set in .env.local
+  const [dangerZonePin, setDangerZonePin] = useState('1234') // Loaded from backend at runtime
 
   // Check if stem server is running and get status
   useEffect(() => {
@@ -37,6 +37,18 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   }, [onBack])
 
   useEffect(() => {
+    const fetchAppConfig = async () => {
+      try {
+        const response = await fetch(`${STEM_SERVER_URL}/api/config`)
+        if (response.ok) {
+          const config = await response.json()
+          setDangerZonePin(config.dangerZonePin)
+        }
+      } catch (error) {
+        console.log('App config not available, using default PIN')
+      }
+    }
+    
     const checkStemServer = async () => {
       try {
         const response = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
@@ -136,6 +148,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
       }
     }
     
+    fetchAppConfig()
     checkStemServer()
     checkEnrichmentStatus()
     checkItunesStatus()
@@ -531,7 +544,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   }
 
   const handleUnlockDangerZone = () => {
-    if (pinInput === DANGER_ZONE_PIN) {
+    if (pinInput === dangerZonePin) {
       setDangerZoneUnlocked(true)
       setDangerZoneExpanded(true)
       setMessage('🔓 Danger Zone unlocked')

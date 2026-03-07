@@ -282,6 +282,17 @@ app.post('/api/stems/process-missing', async (req, res) => {
   }
 })
 
+// Get application configuration (including danger zone PIN)
+app.get('/api/config', (req, res) => {
+  try {
+    res.json({
+      dangerZonePin: process.env.DANGER_ZONE_PIN || '1234'
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 // Get iTunes API configuration
 app.get('/api/config/itunes', (req, res) => {
   try {
