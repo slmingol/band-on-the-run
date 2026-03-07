@@ -281,11 +281,33 @@ export function saveEnrichedSongs(songs) {
         id: s.id
       }))
     
-    fs.writeFileSync(ENRICHED_SONGS_PATH, JSON.stringify(songsWithAudioUrls, null, 2), 'utf8')
-    console.log(`💾 Saved ${songsWithAudioUrls.length} enriched songs to disk`)
-    return songsWithAudioUrls.length
+    // Deduplicate by ID (keep last occurrence in case of duplicates)
+    const uniqueSongs = []
+    const seenIds = new Set()
+    for (let i = songsWithAudioUrls.length - 1; i >= 0; i--) {
+      const song = songsWithAudioUrls[i]
+      if (!seenIds.has(song.id)) {
+        seenIds.add(song.id)
+        uniqueSongs.unshift(song)
+      }
+    }
+    
+    // Sort by ID for consistency
+    uniqueSongs.sort((a, b) => a.id - b.id)
+    
+    // Ensure directory exists
+    const dir = path.dirname(ENRICHED_SONGS_PATH)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+    
+    fs.writeFileSync(ENRICHED_SONGS_PATH, JSON.stringify(uniqueSongs, null, 2), 'utf8')
+    console.log(`💾 Saved ${uniqueSongs.length} enriched songs to ${ENRICHED_SONGS_PATH}`)
+    return uniqueSongs.length
   } catch (error) {
     console.error('❌ Failed to save enriched songs:', error.message)
+    console.error('   Path:', ENRICHED_SONGS_PATH)
+    console.error('   Error:', error)
     throw error
   }
 }
@@ -308,9 +330,16 @@ function loadEnrichedSongs() {
 async function saveEnrichmentState(state) {
   currentEnrichmentState = state
   try {
+    // Ensure directory exists
+    const dir = path.dirname(ENRICHMENT_STATE_PATH)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+    
     fs.writeFileSync(ENRICHMENT_STATE_PATH, JSON.stringify(state, null, 2), 'utf8')
   } catch (error) {
     console.error('❌ Failed to save enrichment state:', error.message)
+    console.error('   Path:', ENRICHMENT_STATE_PATH)
   }
 }
 
