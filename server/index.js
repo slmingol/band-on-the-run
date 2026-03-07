@@ -2,7 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { readFile } from 'fs/promises'
 import { processStemsForTopSongs, getStemStatus, checkForInterruptedJob, getProcessingState, resumeInterruptedJob, retryFailedSongs, cancelProcessing, processMissingStems, getItunesApiConfig, setItunesApiEnabled } from './stem-processor.js'
-import { enrichAllSongs, getEnrichedSongs, needsRefresh, getItunesApiStatus, getSongsNeedingItunes } from './song-enrichment.js'
+import { enrichAllSongs, getEnrichedSongs, needsRefresh, getItunesApiStatus, getSongsNeedingItunes, saveEnrichedSongs, getEnrichmentState } from './song-enrichment.js'
 
 const app = express()
 const PORT = 3001
@@ -39,7 +39,12 @@ checkForInterruptedJob()
 
 // Initial song enrichment on server startup
 console.log('🎵 Starting initial song enrichment...')
-enrichAllSongs()
+
+// Check for interrupted enrichment and resume if found
+const enrichmentState = getEnrichmentState()
+const shouldResumeEnrichment = enrichmentState && enrichmentState.isRunning
+
+enrichAllSongs(shouldResumeEnrichment)
   .then(() => {
     console.log('✅ Initial song enrichment complete')
   })
@@ -86,11 +91,62 @@ app.post('/api/songs/refresh', async (req, res) => {
   }
 })
 
+// Manual save endpoint (persist current enrichments to disk)
+app.post('/api/songs/save', async (req, res) => {
+  try {
+    const data = getEnrichedSongs()
+    const count = saveEnrichedSongs(data.songs)
+    res.json({ 
+      message: 'Enriched songs saved to disk',
+      savedCount: count
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 // Get iTunes API status (for monitoring rate limiting and errors)
 app.get('/api/itunes/status', (req, res) => {
   try {
     const status = getItunesApiStatus()
     res.json(status)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get enrichment state (for monitoring interrupted enrichment)
+app.get('/api/enrichment/status', (req, res) => {
+  try {
+    const state = getEnrichmentState()
+    res.json(state || { isRunning: false })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Resume interrupted enrichment
+app.post('/api/enrichment/resume', async (req, res) => {
+  try {
+    const state = getEnrichmentState()
+    if (!state || !state.isRunning) {
+      return res.status(400).json({ error: 'No interrupted enrichment found' })
+    }
+    
+    // Start resuming in background
+    enrichAllSongs(true)
+      .then(result => {
+        console.log('✅ Resumed enrichment completed')
+      })
+      .catch(error => {
+        console.error('❌ Resumed enrichment failed:', error)
+      })
+    
+    res.json({ 
+      message: 'Resuming interrupted enrichment',
+      status: 'processing',
+      remaining: state.queue.length
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

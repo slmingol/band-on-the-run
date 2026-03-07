@@ -1,4 +1,5 @@
-import { enrichSongWithSpotify } from './spotifyApi.js'
+// Backend handles all iTunes enrichment - frontend just consumes /api/songs
+// import { enrichSongWithSpotify } from './spotifyApi.js'
 
 const STEM_SERVER_URL = '' // Use relative URLs for API calls
 
@@ -206,29 +207,11 @@ async function getEnrichedSongsFallback() {
       return song
     })
     
-    console.log('🎵 Enriching songs with iTunes previews (this may take a moment)...')
+    console.log('🎵 Using songs from backend (backend handles iTunes enrichment)...')
     
-    // Enrich songs without stems with iTunes previews in batches
-    const batchSize = 50
-    const enrichedSongs = []
-    
-    for (let i = 0; i < songsWithStems.length; i += batchSize) {
-      const batch = songsWithStems.slice(i, i + batchSize)
-      const enrichedBatch = await Promise.all(
-        batch.map(async (song) => {
-          if (!song.stems) {
-            const enriched = await enrichSongWithSpotify(song)
-            return { ...enriched, id: song.id }
-          }
-          return song
-        })
-      )
-      enrichedSongs.push(...enrichedBatch)
-      
-      if (i + batchSize < songsWithStems.length) {
-        console.log(`⏳ Enriched ${enrichedSongs.length}/${songsWithStems.length} songs...`)
-      }
-    }
+    // Backend handles all iTunes enrichment with proper rate limiting
+    // Frontend just uses the data as-is from /api/songs
+    const enrichedSongs = songsWithStems.map(song => ({ ...song, id: song.id }))
     
     const withStems = enrichedSongs.filter(s => s.stems).length
     const withPreviews = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
@@ -257,20 +240,19 @@ async function getEnrichedSongsFallback() {
     console.log('✅ Using cached iTunes songs from fallback')
     enrichedBaseSongs = JSON.parse(cachedFallback)
   } else {
-    // Enrich BASE_SONGS with iTunes preview data
+    // Backend handles iTunes enrichment - just use BASE_SONGS as-is
     if (BASE_SONGS.length > 0) {
-      console.log('🎵 Fetching song previews from iTunes...')
-      const enrichedPromises = BASE_SONGS.map(song => enrichSongWithSpotify(song))
-      enrichedBaseSongs = await Promise.all(enrichedPromises)
+      console.log('🎵 Using BASE_SONGS (backend handles iTunes enrichment)')
+      enrichedBaseSongs = BASE_SONGS
       
-      // Cache the enriched songs
+      // Cache the songs
       localStorage.setItem(ENRICHED_CACHE_KEY, JSON.stringify(enrichedBaseSongs))
       localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString())
       
       ENRICHED_SONGS = enrichedBaseSongs
       
       const withPreviews = enrichedBaseSongs.filter(s => s.audioUrl).length
-      console.log(`✅ iTunes songs loaded! ${withPreviews}/${enrichedBaseSongs.length} have audio previews`)
+      console.log(`✅ Fallback songs loaded: ${withPreviews}/${enrichedBaseSongs.length} have audio previews`)
     }
   }
   

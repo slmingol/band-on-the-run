@@ -33,3 +33,6 @@ server/processing-state.json
 
 # Audio files (generated/downloaded content)
 public/audio/
+# Enrichment state (runtime)
+server/enrichment-state.json
+server/processing-state.json

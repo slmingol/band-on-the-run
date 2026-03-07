@@ -9,11 +9,16 @@ const __dirname = path.dirname(__filename)
 // Paths
 const PROJECT_ROOT = path.join(__dirname, '..')
 const TOP_SONGS_PATH = path.join(PROJECT_ROOT, 'scripts', 'top-songs.json')
+const ENRICHED_SONGS_PATH = path.join(PROJECT_ROOT, 'scripts', 'top-songs-enriched.json')
+const ENRICHMENT_STATE_PATH = path.join(PROJECT_ROOT, 'server', 'enrichment-state.json')
 const STEMS_DIR = path.join(PROJECT_ROOT, 'public', 'audio', 'stems', 'htdemucs')
 
 // Cache
 let enrichedSongsCache = null
 let lastEnriched = null
+
+// Enrichment state
+let currentEnrichmentState = null
 
 // iTunes API Status Tracking
 const itunesApiStatus = {
@@ -154,7 +159,7 @@ const ITUNES_CONFIG = {
   RATE_LIMIT_DELAY: 300000,  // Wait 5 minutes when hitting rate limit
   BATCH_SIZE: 3,             // Tiny batches of 3 songs
   BATCH_DELAY: 300000,       // 5 minutes between batches
-  MAX_ITUNES_REQUESTS: 0,    // Disabled - iTunes API is too aggressive with rate limiting
+  MAX_ITUNES_REQUESTS: 100,  // Backend handles enrichment with proper rate limiting (was 0/disabled)
   RANDOMIZE_DELAY: true,     // Add random jitter to avoid pattern detection
   MIN_RANDOM_DELAY: 30000,   // Minimum 30s additional random delay
   MAX_RANDOM_DELAY: 120000   // Maximum 2min additional random delay
@@ -224,8 +229,9 @@ async function fetchItunesPreview(song, retryCount = 0) {
     }
     
     // Check if response is JSON before parsing
+    // iTunes API returns 'text/javascript' content-type, not 'application/json'
     const contentType = response.headers.get('content-type')
-    if (!contentType || !contentType.includes('application/json')) {
+    if (!contentType || (!contentType.includes('application/json') && !contentType.includes('text/javascript'))) {
       trackItunesRequest(song, 'non_json', response.status, 'Non-JSON response')
       console.warn(`iTunes returned non-JSON response for "${song.title}"`)
       return null
@@ -261,9 +267,220 @@ async function fetchItunesPreview(song, retryCount = 0) {
   }
 }
 
+// Save enriched songs to disk (persist iTunes audioUrls)
+export function saveEnrichedSongs(songs) {
+  try {
+    // Only save songs that have audioUrls (don't save stems info)
+    const songsWithAudioUrls = songs
+      .filter(s => s.audioUrl)
+      .map(s => ({
+        title: s.title,
+        artist: s.artist,
+        audioUrl: s.audioUrl,
+        year: s.year,
+        id: s.id
+      }))
+    
+    fs.writeFileSync(ENRICHED_SONGS_PATH, JSON.stringify(songsWithAudioUrls, null, 2), 'utf8')
+    console.log(`💾 Saved ${songsWithAudioUrls.length} enriched songs to disk`)
+    return songsWithAudioUrls.length
+  } catch (error) {
+    console.error('❌ Failed to save enriched songs:', error.message)
+    throw error
+  }
+}
+
+// Load previously enriched songs from disk
+function loadEnrichedSongs() {
+  try {
+    if (fs.existsSync(ENRICHED_SONGS_PATH)) {
+      const enriched = JSON.parse(fs.readFileSync(ENRICHED_SONGS_PATH, 'utf8'))
+      console.log(`📂 Loaded ${enriched.length} previously enriched songs from disk`)
+      return enriched
+    }
+  } catch (error) {
+    console.error('⚠️  Failed to load enriched songs:', error.message)
+  }
+  return []
+}
+
+// Save enrichment state to disk
+async function saveEnrichmentState(state) {
+  currentEnrichmentState = state
+  try {
+    fs.writeFileSync(ENRICHMENT_STATE_PATH, JSON.stringify(state, null, 2), 'utf8')
+  } catch (error) {
+    console.error('❌ Failed to save enrichment state:', error.message)
+  }
+}
+
+// Load enrichment state from disk
+function loadEnrichmentState() {
+  try {
+    if (fs.existsSync(ENRICHMENT_STATE_PATH)) {
+      const state = JSON.parse(fs.readFileSync(ENRICHMENT_STATE_PATH, 'utf8'))
+      console.log(`📂 Found interrupted enrichment: ${state.processed}/${state.total} songs processed`)
+      return state
+    }
+  } catch (error) {
+    console.error('⚠️  Failed to load enrichment state:', error.message)
+  }
+  return null
+}
+
+// Clear enrichment state
+function clearEnrichmentState() {
+  currentEnrichmentState = null
+  try {
+    if (fs.existsSync(ENRICHMENT_STATE_PATH)) {
+      fs.unlinkSync(ENRICHMENT_STATE_PATH)
+    }
+  } catch (error) {
+    console.error('⚠️  Failed to clear enrichment state:', error.message)
+  }
+}
+
+// Get current enrichment state
+export function getEnrichmentState() {
+  return currentEnrichmentState || loadEnrichmentState()
+}
+
+// Resume interrupted enrichment
+async function resumeEnrichment(state) {
+  console.log(`🔄 Resuming from song ${state.processed + 1}/${state.total}`)
+  
+  // Reset API status tracking
+  resetItunesApiStatus()
+  
+  // Scan for available stems
+  const stemSongs = scanStemsDirectory()
+  
+  // Load songs from database
+  const songs = JSON.parse(fs.readFileSync(TOP_SONGS_PATH, 'utf8'))
+  
+  // Load previously enriched songs
+  const previouslyEnriched = loadEnrichedSongs()
+  
+  // Add database IDs and merge with previously enriched data
+  const songsWithIds = songs.map((song, index) => {
+    const id = index + 1
+    const enriched = previouslyEnriched.find(e => e.id === id)
+    return {
+      ...song,
+      id,
+      audioUrl: enriched?.audioUrl || song.audioUrl
+    }
+  })
+  
+  // Match with stems
+  const songsWithStems = songsWithIds.map(song => {
+    const stemSong = stemSongs.find(s => {
+      if (s.title.toLowerCase() === song.title.toLowerCase() && 
+          s.artist.toLowerCase() === song.artist.toLowerCase()) {
+        return true
+      }
+      const stemTitleLower = s.title.toLowerCase()
+      const songTitleLower = song.title.toLowerCase()
+      const stemArtistLower = s.artist.toLowerCase()
+      const songArtistLower = song.artist.toLowerCase()
+      const artistMatch = stemArtistLower.includes(songArtistLower) || 
+                          songArtistLower.includes(stemArtistLower)
+      const titleMatch = stemTitleLower.includes(songTitleLower) || 
+                        songTitleLower.includes(stemTitleLower)
+      return artistMatch && titleMatch
+    })
+    if (stemSong) {
+      return { ...song, stems: stemSong.stems }
+    }
+    return song
+  })
+  
+  // Rebuild the queue from remaining songs
+  const remainingQueue = state.queue.map(qSong => 
+    songsWithStems.find(s => s.id === qSong.id)
+  ).filter(Boolean)
+  
+  console.log(`📋 Resuming with ${remainingQueue.length} remaining songs`)
+  
+  // Create enriched songs array
+  const enrichedSongs = songsWithStems.filter(s => s.stems || s.audioUrl)
+  const songsToSkip = songsWithStems.filter(s => 
+    !s.stems && !s.audioUrl && !remainingQueue.find(rs => rs.id === s.id)
+  )
+  
+  let itunesRequestsMade = state.processed
+  
+  // Process remaining songs
+  for (let i = 0; i < remainingQueue.length; i++) {
+    const song = remainingQueue[i]
+    
+    const delay = getRandomDelay(ITUNES_CONFIG.REQUEST_DELAY)
+    console.log(`⏳ Waiting ${Math.round(delay / 1000)}s before requesting "${song.title}"...`)
+    await sleep(delay)
+    
+    const audioUrl = await fetchItunesPreview(song)
+    enrichedSongs.push({ ...song, audioUrl })
+    itunesRequestsMade++
+    
+    // Save state after each song
+    await saveEnrichmentState({
+      isRunning: true,
+      total: state.total,
+      processed: itunesRequestsMade,
+      queue: remainingQueue.slice(i + 1).map(s => ({ id: s.id, title: s.title, artist: s.artist })),
+      lastProcessed: { title: song.title, artist: song.artist, success: !!audioUrl },
+      startTime: state.startTime
+    })
+    
+    const successful = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
+    console.log(`📊 Progress: ${itunesRequestsMade}/${state.total} | ${successful} successful | ${itunesRequestsMade - successful} failed`)
+    
+    // Pause between batches
+    if (itunesRequestsMade % ITUNES_CONFIG.BATCH_SIZE === 0 && i < remainingQueue.length - 1) {
+      const batchDelay = getRandomDelay(ITUNES_CONFIG.BATCH_DELAY)
+      console.log(`⏸️  Batch complete. Pausing ${Math.round(batchDelay / 1000 / 60)}min before next batch...`)
+      await sleep(batchDelay)
+    }
+  }
+  
+  // Add back songs we're not enriching
+  enrichedSongs.push(...songsToSkip)
+  
+  // Sort back to original order by ID
+  enrichedSongs.sort((a, b) => a.id - b.id)
+  
+  const withStems = enrichedSongs.filter(s => s.stems).length
+  const withPreviews = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
+  const withoutAudio = enrichedSongs.filter(s => !s.stems && !s.audioUrl).length
+  console.log(`✅ Enrichment complete: ${withStems} with stems, ${withPreviews} with iTunes previews, ${withoutAudio} without audio`)
+  
+  // Mark enrichment as complete
+  itunesApiStatus.currentlyEnriching = false
+  
+  // Clear enrichment state
+  clearEnrichmentState()
+  
+  // Save enriched songs to disk
+  saveEnrichedSongs(enrichedSongs)
+  
+  enrichedSongsCache = enrichedSongs
+  lastEnriched = new Date()
+  
+  return enrichedSongs
+}
+
 // Enrich all songs with stems and iTunes previews
-export async function enrichAllSongs() {
+export async function enrichAllSongs(resumeFromState = false) {
   console.log('🎵 Starting song enrichment process...')
+  
+  // Check for interrupted enrichment
+  const interruptedState = loadEnrichmentState()
+  const shouldResume = resumeFromState && interruptedState && interruptedState.isRunning
+  
+  if (shouldResume) {
+    console.log('🔄 Resuming interrupted enrichment...')
+    return resumeEnrichment(interruptedState)
+  }
   
   // Reset API status tracking
   resetItunesApiStatus()
@@ -275,11 +492,19 @@ export async function enrichAllSongs() {
   const songs = JSON.parse(fs.readFileSync(TOP_SONGS_PATH, 'utf8'))
   console.log(`📚 Loaded ${songs.length} songs from database`)
   
-  // Add database IDs
-  const songsWithIds = songs.map((song, index) => ({
-    ...song,
-    id: index + 1
-  }))
+  // Load previously enriched songs
+  const previouslyEnriched = loadEnrichedSongs()
+  
+  // Add database IDs and merge with previously enriched data
+  const songsWithIds = songs.map((song, index) => {
+    const id = index + 1
+    const enriched = previouslyEnriched.find(e => e.id === id)
+    return {
+      ...song,
+      id,
+      audioUrl: enriched?.audioUrl || song.audioUrl
+    }
+  })
   
   // Match with stems using fuzzy matching
   const songsWithStems = songsWithIds.map(song => {
@@ -338,6 +563,15 @@ export async function enrichAllSongs() {
   console.log(`   • ${Math.round(ITUNES_CONFIG.BATCH_DELAY / 1000 / 60)}min pause every ${ITUNES_CONFIG.BATCH_SIZE} songs`)
   console.log(`   • At this rate: ~${Math.ceil(songsNeedingEnrichment.length / maxItunesRequests)} days to enrich all songs`)
   
+  // Save initial state
+  await saveEnrichmentState({
+    isRunning: true,
+    total: shuffledNeedingEnrichment.length,
+    processed: 0,
+    queue: shuffledNeedingEnrichment.map(s => ({ id: s.id, title: s.title, artist: s.artist })),
+    startTime: new Date().toISOString()
+  })
+  
   // Create enriched songs array with all songs that have stems or existing audioUrls
   const enrichedSongs = songsWithStems.filter(s => s.stems || s.audioUrl)
   const songsToSkip = songsWithStems.filter(s => !s.stems && !s.audioUrl && !shuffledNeedingEnrichment.includes(s))
@@ -357,6 +591,16 @@ export async function enrichAllSongs() {
     const audioUrl = await fetchItunesPreview(song)
     enrichedSongs.push({ ...song, audioUrl })
     itunesRequestsMade++
+    
+    // Save state after each song
+    await saveEnrichmentState({
+      isRunning: true,
+      total: shuffledNeedingEnrichment.length,
+      processed: itunesRequestsMade,
+      queue: shuffledNeedingEnrichment.slice(itunesRequestsMade).map(s => ({ id: s.id, title: s.title, artist: s.artist })),
+      lastProcessed: { title: song.title, artist: song.artist, success: !!audioUrl },
+      startTime: currentEnrichmentState?.startTime || new Date().toISOString()
+    })
     
     const successful = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
     console.log(`📊 Progress: ${itunesRequestsMade}/${shuffledNeedingEnrichment.length} | ${successful} successful | ${itunesRequestsMade - successful} failed`)
@@ -385,6 +629,12 @@ export async function enrichAllSongs() {
   
   // Mark enrichment as complete
   itunesApiStatus.currentlyEnriching = false
+  
+  // Clear enrichment state
+  clearEnrichmentState()
+  
+  // Save enriched songs to disk (persist audioUrls)
+  saveEnrichedSongs(enrichedSongs)
   
   enrichedSongsCache = enrichedSongs
   lastEnriched = new Date()

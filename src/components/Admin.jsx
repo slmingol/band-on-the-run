@@ -18,6 +18,12 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   const [itunesApiEnabled, setItunesApiEnabled] = useState(false)
   const [songsNeedingItunes, setSongsNeedingItunes] = useState(null)
   const [showNeedingItunes, setShowNeedingItunes] = useState(false)
+  
+  // Danger Zone security
+  const [dangerZoneUnlocked, setDangerZoneUnlocked] = useState(false)
+  const [dangerZoneExpanded, setDangerZoneExpanded] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const DANGER_ZONE_PIN = import.meta.env.VITE_DANGER_ZONE_PIN || '1234' // Set in .env.local
 
   // Check if stem server is running and get status
   useEffect(() => {
@@ -496,23 +502,53 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   }
 
   const handleClearStats = () => {
-    if (confirm('Are you sure you want to clear all stats? This cannot be undone.')) {
+    const userInput = prompt('⚠️ WARNING: This will permanently delete all stats!\n\nType "DELETE" to confirm:')
+    if (userInput === 'DELETE') {
       localStorage.removeItem('band_on_the_run_stats')
       localStorage.removeItem('band_on_the_run_daily')
       setMessage('✅ Stats cleared!')
+      setTimeout(() => setMessage(''), 3000)
+    } else if (userInput !== null) {
+      setMessage('❌ Confirmation failed - stats not cleared')
       setTimeout(() => setMessage(''), 3000)
     }
   }
 
   const handleClearAllCache = () => {
-    if (confirm('This will clear ALL cache and data. The page will reload. Continue?')) {
+    const userInput = prompt('🚨 NUCLEAR OPTION: This will clear EVERYTHING!\n\nType "DELETE EVERYTHING" to confirm:')
+    if (userInput === 'DELETE EVERYTHING') {
       localStorage.clear()
       sessionStorage.clear()
+      setMessage('💥 Clearing everything...')
       onBack() // Dismiss the admin modal
       setTimeout(() => {
         window.location.reload() // Reload the page after a brief moment
       }, 100)
+    } else if (userInput !== null) {
+      setMessage('❌ Confirmation failed - nothing cleared')
+      setTimeout(() => setMessage(''), 3000)
     }
+  }
+
+  const handleUnlockDangerZone = () => {
+    if (pinInput === DANGER_ZONE_PIN) {
+      setDangerZoneUnlocked(true)
+      setDangerZoneExpanded(true)
+      setMessage('🔓 Danger Zone unlocked')
+      setTimeout(() => setMessage(''), 2000)
+    } else {
+      setMessage('❌ Incorrect PIN')
+      setTimeout(() => setMessage(''), 2000)
+      setPinInput('')
+    }
+  }
+
+  const handleLockDangerZone = () => {
+    setDangerZoneUnlocked(false)
+    setDangerZoneExpanded(false)
+    setPinInput('')
+    setMessage('🔒 Danger Zone locked')
+    setTimeout(() => setMessage(''), 2000)
   }
 
   return (
@@ -759,29 +795,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           </div>
         )}
 
-        <div className="admin-section">
-          <h3>Cache Management</h3>
-          <p className="admin-description">
-            Clear the song cache to force reload from the backend. Use this if songs aren't loading properly.
-          </p>
-          <button onClick={handleClearCache} className="admin-button">
-            🗑️ Clear Song Cache
-          </button>
-          
-          {stemServerAvailable && (
-            <>
-              <p className="admin-description" style={{ marginTop: '1rem' }}>
-                Manually trigger backend enrichment refresh to re-scan stems and retry iTunes API.
-                <small style={{ display: 'block', marginTop: '0.5rem', opacity: 0.8 }}>
-                  Note: iTunes API may still rate-limit. Backend auto-refreshes every 23 hours.
-                </small>
-              </p>
-              <button onClick={handleRefreshEnrichment} className="admin-button">
-                🔄 Refresh Backend Enrichment
-              </button>
-            </>
-          )}
-        </div>
+
 
         <div className="admin-section">
           <h3>🎸 Stem Management</h3>
@@ -1172,24 +1186,248 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           </p>
         </div>
 
-        <div className="admin-section">
-          <h3>Statistics</h3>
-          <p className="admin-description">
-            Clear all your game statistics and progress. This will reset everything.
-          </p>
-          <button onClick={handleClearStats} className="admin-button danger">
-            ⚠️ Clear All Stats
-          </button>
-        </div>
+        <div className="admin-section danger-zone" style={{
+          backgroundColor: '#ffebee',
+          border: '4px solid #d32f2f',
+          borderRadius: '12px',
+          boxShadow: '0 4px 12px rgba(211, 47, 47, 0.3)',
+          marginTop: '3rem',
+          position: 'relative'
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: '-20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#d32f2f',
+            color: 'white',
+            padding: '0.5rem 2rem',
+            borderRadius: '20px',
+            fontWeight: 'bold',
+            fontSize: '1.1rem',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            border: '3px solid #b71c1c'
+          }}>
+            {dangerZoneUnlocked ? '🔓 UNLOCKED' : '🔒 LOCKED'} DANGER ZONE {dangerZoneUnlocked ? '🔓' : '🔒'}
+          </div>
+          
+          <div style={{ paddingTop: '2rem' }}>
+            <h3 style={{ 
+              color: '#b71c1c', 
+              fontSize: '1.3rem',
+              textAlign: 'center',
+              margin: '0 0 1rem 0',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}>
+              Advanced Operations - Use With Caution
+            </h3>
 
-        <div className="admin-section">
-          <h3>Complete Cache Reset</h3>
-          <p className="admin-description">
-            Nuclear option: Clear ALL cached data including songs and stats. Use this to force a fresh start or fix loading issues.
-          </p>
-          <button onClick={handleClearAllCache} className="admin-button danger">
-            💥 Clear Everything & Reload
-          </button>
+            {!dangerZoneUnlocked ? (
+              // PIN Entry Screen
+              <div style={{
+                textAlign: 'center',
+                padding: '2rem',
+                backgroundColor: '#fff',
+                borderRadius: '8px',
+                border: '3px solid #d32f2f'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔒</div>
+                <p style={{ 
+                  fontSize: '1.1rem', 
+                  fontWeight: 600, 
+                  marginBottom: '1.5rem',
+                  color: '#333'
+                }}>
+                  Enter PIN to unlock Danger Zone
+                </p>
+                <div style={{ marginBottom: '1rem' }}>
+                  <input
+                    type="password"
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleUnlockDangerZone()
+                      }
+                    }}
+                    placeholder="Enter PIN"
+                    maxLength="6"
+                    style={{
+                      padding: '0.75rem 1rem',
+                      fontSize: '1.5rem',
+                      width: '200px',
+                      textAlign: 'center',
+                      letterSpacing: '0.5rem',
+                      border: '2px solid #d32f2f',
+                      borderRadius: '8px',
+                      fontFamily: 'monospace'
+                    }}
+                    autoFocus
+                  />
+                </div>
+                <button 
+                  onClick={handleUnlockDangerZone}
+                  style={{
+                    padding: '0.75rem 2rem',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    backgroundColor: '#d32f2f',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔓 Unlock
+                </button>
+                <p style={{ 
+                  marginTop: '1.5rem', 
+                  fontSize: '0.85rem', 
+                  color: '#666',
+                  fontStyle: 'italic'
+                }}>
+                  Set PIN in .env.local (VITE_DANGER_ZONE_PIN)
+                </p>
+              </div>
+            ) : (
+              // Unlocked - Show Danger Zone Controls
+              <>
+                <div style={{
+                  textAlign: 'center',
+                  marginBottom: '1.5rem'
+                }}>
+                  <button
+                    onClick={handleLockDangerZone}
+                    style={{
+                      padding: '0.5rem 1.5rem',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      backgroundColor: '#4caf50',
+                      color: 'white',
+                      border: '2px solid #388e3c',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🔒 Lock Danger Zone
+                  </button>
+                </div>
+
+                <p className="admin-description" style={{ 
+                  color: '#c62828', 
+                  fontWeight: 600,
+                  textAlign: 'center',
+                  fontSize: '0.95rem',
+                  backgroundColor: '#fff',
+                  padding: '0.75rem',
+                  borderRadius: '6px',
+                  border: '2px solid #ef5350'
+                }}>
+                  ⚠️ These operations can trigger backend processing or permanently delete data ⚠️
+                </p>
+          
+                <div style={{ 
+                  marginTop: '1.5rem',
+                  padding: '1rem',
+                  backgroundColor: '#fff',
+                  borderRadius: '6px',
+                  border: '2px solid #ffcdd2'
+                }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Frontend Cache Operations</h4>
+                  <p className="admin-description" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                    Clear cached data in your browser. Safe - backend data remains intact.
+                  </p>
+                  <button onClick={handleClearCache} className="admin-button" style={{ marginBottom: '0.5rem' }}>
+                    🗑️ Clear Song Cache
+                  </button>
+                  <p style={{ fontSize: '0.75rem', color: '#666', margin: 0 }}>
+                    Forces reload from backend. Use if songs aren't loading properly.
+                  </p>
+                </div>
+
+                {stemServerAvailable && (
+                  <div style={{ 
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#fff9e6',
+                    borderRadius: '6px',
+                    border: '2px solid #ff9800'
+                  }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#e65100' }}>⚠️ Backend Operations</h4>
+                    <p className="admin-description" style={{ fontSize: '0.85rem', marginBottom: '0.75rem', color: '#e65100' }}>
+                      <strong>CAUTION:</strong> Triggers backend processing. May cause iTunes rate limiting.
+                    </p>
+                    <button onClick={handleRefreshEnrichment} className="admin-button" style={{
+                      backgroundColor: '#ff9800',
+                      color: 'white',
+                      border: '2px solid #f57c00'
+                    }}>
+                      🔄 Refresh Backend Enrichment
+                    </button>
+                    <p style={{ fontSize: '0.75rem', color: '#666', margin: '0.5rem 0 0 0' }}>
+                      Re-scans stems and retries iTunes API. Backend auto-refreshes every 23 hours anyway.
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ 
+                  marginTop: '1rem',
+                  padding: '1.25rem',
+                  backgroundColor: '#ffcdd2',
+                  borderRadius: '6px',
+                  border: '3px solid #d32f2f'
+                }}>
+                  <h4 style={{ 
+                    margin: '0 0 0.75rem 0', 
+                    fontSize: '1.1rem', 
+                    fontWeight: 700, 
+                    color: '#b71c1c',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    🚨 Destructive Operations - Cannot Be Undone
+                  </h4>
+                  <p className="admin-description" style={{ 
+                    fontSize: '0.9rem', 
+                    marginBottom: '1rem', 
+                    color: '#c62828',
+                    fontWeight: 600,
+                    backgroundColor: '#fff',
+                    padding: '0.5rem',
+                    borderRadius: '4px',
+                    border: '2px solid #ef5350'
+                  }}>
+                    ⛔ WARNING: These actions permanently delete data!<br/>
+                    <small style={{ fontSize: '0.85rem' }}>You will be asked to type a confirmation phrase.</small>
+                  </p>
+                  <button onClick={handleClearStats} className="admin-button danger" style={{ 
+                    marginBottom: '0.75rem',
+                    fontSize: '1rem',
+                    fontWeight: 600
+                  }}>
+                    ⚠️ Clear All Stats
+                  </button>
+                  <p style={{ fontSize: '0.75rem', color: '#666', marginBottom: '1.25rem', paddingLeft: '0.5rem' }}>
+                    Deletes all game statistics and progress history. (Type "DELETE")
+                  </p>
+                  <button onClick={handleClearAllCache} className="admin-button danger" style={{
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    backgroundColor: '#b71c1c',
+                    borderColor: '#7f0000'
+                  }}>
+                    💥 Clear Everything & Reload
+                  </button>
+                  <p style={{ fontSize: '0.75rem', color: '#666', margin: '0.5rem 0 0 0', paddingLeft: '0.5rem' }}>
+                    Nuclear option: Clears ALL browser cache. (Type "DELETE EVERYTHING")
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {message && (
