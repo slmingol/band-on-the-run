@@ -408,6 +408,16 @@ async function resumeEnrichment(state) {
     !s.stems && !s.audioUrl && !remainingQueue.find(rs => rs.id === s.id)
   )
   
+  // Initial save to persist previously enriched songs before resuming
+  if (enrichedSongs.length > 0) {
+    try {
+      saveEnrichedSongs(enrichedSongs)
+      console.log(`💾 Restored ${enrichedSongs.filter(s => s.audioUrl).length} previously enriched songs`)
+    } catch (error) {
+      console.error('⚠️  Failed to restore enriched songs:', error.message)
+    }
+  }
+  
   let itunesRequestsMade = state.processed
   
   // Process remaining songs
@@ -421,6 +431,15 @@ async function resumeEnrichment(state) {
     const audioUrl = await fetchItunesPreview(song)
     enrichedSongs.push({ ...song, audioUrl })
     itunesRequestsMade++
+    
+    // Save enriched songs after each successful enrichment (incremental save)
+    if (audioUrl) {
+      try {
+        saveEnrichedSongs(enrichedSongs)
+      } catch (error) {
+        console.error('⚠️  Failed to save enriched songs incrementally:', error.message)
+      }
+    }
     
     // Save state after each song
     await saveEnrichmentState({
@@ -576,6 +595,16 @@ export async function enrichAllSongs(resumeFromState = false) {
   const enrichedSongs = songsWithStems.filter(s => s.stems || s.audioUrl)
   const songsToSkip = songsWithStems.filter(s => !s.stems && !s.audioUrl && !shuffledNeedingEnrichment.includes(s))
   
+  // Initial save to persist previously enriched songs before starting new enrichment
+  if (enrichedSongs.length > 0) {
+    try {
+      saveEnrichedSongs(enrichedSongs)
+      console.log(`💾 Saved ${enrichedSongs.filter(s => s.audioUrl).length} previously enriched songs`)
+    } catch (error) {
+      console.error('⚠️  Failed to save initial enriched songs:', error.message)
+    }
+  }
+  
   let itunesRequestsMade = 0
   
   // Process selected songs with aggressive delays and randomization
@@ -591,6 +620,15 @@ export async function enrichAllSongs(resumeFromState = false) {
     const audioUrl = await fetchItunesPreview(song)
     enrichedSongs.push({ ...song, audioUrl })
     itunesRequestsMade++
+    
+    // Save enriched songs after each successful enrichment (incremental save)
+    if (audioUrl) {
+      try {
+        saveEnrichedSongs(enrichedSongs)
+      } catch (error) {
+        console.error('⚠️  Failed to save enriched songs incrementally:', error.message)
+      }
+    }
     
     // Save state after each song
     await saveEnrichmentState({
