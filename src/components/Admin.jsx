@@ -984,8 +984,14 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           
           <div className="stem-controls">
             {stemStatus && stemStatus.songs && stemStatus.songs.filter(s => !s.hasStems).length > 0 && !isProcessing && (
-              <div className="recommended-action">
-                <p className="action-description">
+              <div className="recommended-action" style={{
+                padding: '1rem',
+                backgroundColor: '#e8f5e9',
+                border: '1px solid #4caf50',
+                borderRadius: '8px',
+                marginBottom: '1rem'
+              }}>
+                <p className="action-description" style={{ margin: '0 0 0.5rem 0' }}>
                   <strong>📌 Recommended:</strong> Process all songs that are missing stems
                 </p>
                 <button 
@@ -1190,9 +1196,15 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
               )}
             </div>
             
-            <div className="manual-action" style={{ marginTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '2rem' : '0', paddingTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '2rem' : '0', borderTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '1px solid #ddd' : 'none' }}>
-              <p className="action-description">
-                <strong>Advanced:</strong> Process a specific number of songs (starts from beginning of list)
+            <div className="manual-action" style={{ 
+              marginTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '2rem' : '0', 
+              padding: '1rem',
+              backgroundColor: '#f5f7fa',
+              border: '1px solid #b0bec5',
+              borderRadius: '8px'
+            }}>
+              <p className="action-description" style={{ margin: '0 0 0.5rem 0' }}>
+                <strong>⚙️ Advanced:</strong> Process a specific number of songs (starts from beginning of list)
               </p>
               <p className="action-note" style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: '#666' }}>
                 <strong>Use this when:</strong> Testing the system, prioritizing specific songs (reorder top-songs.json first), or regenerating stems for the first N songs.
