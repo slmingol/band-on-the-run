@@ -1,0 +1,112 @@
+name: Auto Version Bump
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'VERSION'
+      - '.github/workflows/version-bump.yml'
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    # Skip if commit message contains [skip version] (only for push events)
+    if: "github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip version]')"
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Get current version
+        id: get_version
+        run: |
+          VERSION=$(cat VERSION)
+          echo "current_version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Parse semantic version
+          IFS='.' read -r -a parts <<< "$VERSION"
+          major="${parts[0]}"
+          minor="${parts[1]}"
+          patch="${parts[2]}"
+          
+          # Determine version bump type
+          BUMP_TYPE="${{ github.event.inputs.version_type || 'patch' }}"
+          
+          if [ "$BUMP_TYPE" = "major" ]; then
+            NEW_VERSION="$((major + 1)).0.0"
+          elif [ "$BUMP_TYPE" = "minor" ]; then
+            NEW_VERSION="${major}.$((minor + 1)).0"
+          else
+            NEW_VERSION="${major}.${minor}.$((patch + 1))"
+          fi
+          
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bumping $BUMP_TYPE version from $VERSION to $NEW_VERSION"
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Update version files
+        run: |
+          NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
+          
+          # Update VERSION file
+          echo "$NEW_VERSION" > VERSION
+          
+          # Update package.json (keep in sync)
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json')); pkg.version = '$NEW_VERSION'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');"
+          
+          # Update public/version.json
+          node -e "const fs = require('fs'); fs.writeFileSync('public/version.json', JSON.stringify({version: '$NEW_VERSION'}, null, 2) + '\n');"
+      
+      - name: Commit version bump
+        run: |
+          NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add VERSION package.json public/version.json
+          git commit -m "chore: bump version to $NEW_VERSION [skip version]" || exit 0
+          git push
+      
+      - name: Create and push tag
+        run: |
+          NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
+          
+          git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.new_version }}
+          name: Release v${{ steps.get_version.outputs.new_version }}
+          body: |
+            Automatic release for version ${{ steps.get_version.outputs.new_version }}
+            
+            **Changes:** ${{ github.event.head_commit.message }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
