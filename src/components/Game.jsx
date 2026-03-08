@@ -447,12 +447,11 @@ function Game({ mode, onBack, onShowStats }) {
         {isGameOver && (
           <div className={`game-result ${hasWon ? 'win' : 'lose'}`}>
             <h2>{hasWon ? '🎉 Congratulations!' : '😢 Game Over'}</h2>
-            <p className="result-song">The song was: <strong>{currentSong.title}</strong></p>
+            <p className="result-song"><strong>{currentSong.title}</strong></p>
             <p className="result-artist">by {currentSong.artist}</p>
             {hasWon && (
               <p className="result-stats">
-                You guessed it in {guesses.filter(g => g !== 'BASS_START').length} {guesses.filter(g => g !== 'BASS_START').length === 1 ? 'attempt' : 'attempts'} 
-                with {currentInstrument + 1} {currentInstrument + 1 === 1 ? 'instrument' : 'instruments'}!
+                {guesses.filter(g => g !== 'BASS_START').length} {guesses.filter(g => g !== 'BASS_START').length === 1 ? 'guess' : 'guesses'} • {currentInstrument + 1} {currentInstrument + 1 === 1 ? 'instrument' : 'instruments'}
               </p>
             )}
             
