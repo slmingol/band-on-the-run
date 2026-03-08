@@ -472,6 +472,9 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
     failed: []
   }
   
+  // Load previous state to preserve recentlyCompleted history
+  const previousState = await loadProcessingState()
+  
   // Save initial processing state
   await saveProcessingState({
     isRunning: true,
@@ -480,6 +483,7 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
     currentSong: null,
     statusMessage: null,
     startedAt: new Date().toISOString(),
+    recentlyCompleted: previousState?.recentlyCompleted || [],
     results
   })
   
@@ -505,6 +509,7 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
       startedAt: currentProcessingState.startedAt,
       statusMessage: null,
       shouldCancel: false,
+      recentlyCompleted: currentProcessingState.recentlyCompleted || [],
       results
     })
     
@@ -517,6 +522,12 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
         console.log(`⏭️  Stems already exist: ${sanitizedTitle}`)
         results.skipped++
         
+        // Add to recently completed list as skipped
+        const recentlyCompleted1 = [
+          { song: `${song.title} by ${song.artist}`, status: 'skipped', timestamp: new Date().toISOString() },
+          ...(currentProcessingState.recentlyCompleted || [])
+        ].slice(0, 50)
+        
         // Clear status message
         await saveProcessingState({
           isRunning: true,
@@ -526,6 +537,7 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
           currentStage: 'skipped',
           startedAt: currentProcessingState.startedAt,
           statusMessage: null,
+          recentlyCompleted: recentlyCompleted1,
           results
         })
         
@@ -538,6 +550,13 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
       if (!ENABLE_ITUNES_API) {
         console.log(`⏭️  Skipping ${song.title} - iTunes API disabled (set ENABLE_ITUNES_API=1 to enable)`)
         results.skipped++
+        
+        // Add to recently completed list as skipped
+        const recentlyCompleted2 = [
+          { song: `${song.title} by ${song.artist}`, status: 'skipped', timestamp: new Date().toISOString() },
+          ...(currentProcessingState.recentlyCompleted || [])
+        ].slice(0, 50)
+        
         await saveProcessingState({
           isRunning: true,
           totalCount: count,
@@ -546,6 +565,7 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
           currentStage: 'skipped',
           startedAt: currentProcessingState.startedAt,
           statusMessage: '⏭️  iTunes API disabled',
+          recentlyCompleted: recentlyCompleted2,
           results
         })
         continue
@@ -576,12 +596,19 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
         currentStage: 'processing',
         startedAt: currentProcessingState.startedAt,
         statusMessage: '🎸 Separating audio into stems with AI...',
+        recentlyCompleted: currentProcessingState.recentlyCompleted || [],
         results
       })
       
       // Process with Demucs
       await processWithDemucs(audioPath)
       results.successful++
+      
+      // Add to recently completed list (keep last 50)
+      const recentlyCompleted3 = [
+        { song: `${song.title} by ${song.artist}`, status: 'success', timestamp: new Date().toISOString() },
+        ...(currentProcessingState.recentlyCompleted || [])
+      ].slice(0, 50)
       
       // Clear status message after success
       await saveProcessingState({
@@ -592,6 +619,7 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
         currentStage: 'complete',
         startedAt: currentProcessingState.startedAt,
         statusMessage: null,
+        recentlyCompleted: recentlyCompleted3,
         results
       })
       
@@ -612,6 +640,12 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
       console.error(`❌ Failed: ${song.title} - ${error.message}`)
       results.failed.push({ song, error: error.message })
       
+      // Add to recently completed list as failed
+      const recentlyCompleted4 = [
+        { song: `${song.title} by ${song.artist}`, status: 'failed', error: error.message, timestamp: new Date().toISOString() },
+        ...(currentProcessingState.recentlyCompleted || [])
+      ].slice(0, 50)
+      
       // If we failed due to rate limit after retries, add longer delay before next song
       if (error.message.includes('RATE_LIMIT') || error.message.includes('Rate limit')) {
         const pauseMsg = '⏸️  Pausing 30 seconds due to rate limits before continuing...'
@@ -624,6 +658,7 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
           currentSong: `${song.title} by ${song.artist}`,
           startedAt: currentProcessingState.startedAt,
           statusMessage: pauseMsg,
+          recentlyCompleted: recentlyCompleted4,
           results
         })
         
@@ -637,6 +672,19 @@ export async function processStemsForTopSongs(count, startIndex = 0, previousRes
           currentSong: `${song.title} by ${song.artist}`,
           startedAt: currentProcessingState.startedAt,
           statusMessage: null,
+          recentlyCompleted: recentlyCompleted4,
+          results
+        })
+      } else {
+        // Save state with failed status even without pause
+        await saveProcessingState({
+          isRunning: true,
+          totalCount: count,
+          currentIndex: i,
+          currentSong: `${song.title} by ${song.artist}`,
+          startedAt: currentProcessingState.startedAt,
+          statusMessage: null,
+          recentlyCompleted: recentlyCompleted4,
           results
         })
       }
@@ -692,7 +740,7 @@ export async function retryFailedSongs() {
     failed: []
   }
   
-  // Save initial processing state
+  // Save initial processing state (previousState already loaded above)
   await saveProcessingState({
     isRunning: true,
     totalCount: failedSongs.length,
@@ -700,6 +748,7 @@ export async function retryFailedSongs() {
     currentSong: null,
     statusMessage: null,
     startedAt: new Date().toISOString(),
+    recentlyCompleted: previousState?.recentlyCompleted || [],
     results
   })
   
@@ -724,6 +773,7 @@ export async function retryFailedSongs() {
       startedAt: currentProcessingState.startedAt,
       statusMessage: null,
       shouldCancel: false,
+      recentlyCompleted: currentProcessingState.recentlyCompleted || [],
       results
     })
     
@@ -736,6 +786,12 @@ export async function retryFailedSongs() {
         console.log(`⏭️  Stems already exist: ${sanitizedTitle}`)
         results.skipped++
         
+        // Add to recently completed list as skipped
+        const recentlyCompleted5 = [
+          { song: `${song.title} by ${song.artist}`, status: 'skipped', timestamp: new Date().toISOString() },
+          ...(currentProcessingState.recentlyCompleted || [])
+        ].slice(0, 50)
+        
         // Clear status message
         await saveProcessingState({
           isRunning: true,
@@ -744,6 +800,7 @@ export async function retryFailedSongs() {
           currentSong: `${song.title} by ${song.artist}`,
           startedAt: currentProcessingState.startedAt,
           statusMessage: null,
+          recentlyCompleted: recentlyCompleted5,
           results
         })
         
@@ -756,6 +813,24 @@ export async function retryFailedSongs() {
       if (!ENABLE_ITUNES_API) {
         console.log(`⏭️  Skipping ${song.title} - iTunes API disabled (set ENABLE_ITUNES_API=1 to enable)`)
         results.skipped++
+        
+        // Add to recently completed list as skipped
+        const recentlyCompleted6 = [
+          { song: `${song.title} by ${song.artist}`, status: 'skipped', timestamp: new Date().toISOString() },
+          ...(currentProcessingState.recentlyCompleted || [])
+        ].slice(0, 50)
+        
+        await saveProcessingState({
+          isRunning: true,
+          totalCount: failedSongs.length,
+          currentIndex: i,
+          currentSong: `${song.title} by ${song.artist}`,
+          startedAt: currentProcessingState.startedAt,
+          statusMessage: null,
+          recentlyCompleted: recentlyCompleted6,
+          results
+        })
+        
         continue
       }
       
@@ -773,12 +848,19 @@ export async function retryFailedSongs() {
         currentSong: `${song.title} by ${song.artist}`,
         startedAt: currentProcessingState.startedAt,
         statusMessage: '🎸 Separating audio into stems...',
+        recentlyCompleted: currentProcessingState.recentlyCompleted || [],
         results
       })
       
       // Process with Demucs
       await processWithDemucs(audioPath)
       results.successful++
+      
+      // Add to recently completed list (keep last 50)
+      const recentlyCompleted7 = [
+        { song: `${song.title} by ${song.artist}`, status: 'success', timestamp: new Date().toISOString() },
+        ...(currentProcessingState.recentlyCompleted || [])
+      ].slice(0, 50)
       
       // Clear status message after success
       await saveProcessingState({
@@ -788,6 +870,7 @@ export async function retryFailedSongs() {
         currentSong: `${song.title} by ${song.artist}`,
         startedAt: currentProcessingState.startedAt,
         statusMessage: null,
+        recentlyCompleted: recentlyCompleted7,
         results
       })
       
@@ -807,6 +890,12 @@ export async function retryFailedSongs() {
       console.error(`❌ Failed again: ${song.title} - ${error.message}`)
       results.failed.push({ song, error: error.message })
       
+      // Add to recently completed list as failed
+      const recentlyCompleted8 = [
+        { song: `${song.title} by ${song.artist}`, status: 'failed', error: error.message, timestamp: new Date().toISOString() },
+        ...(currentProcessingState.recentlyCompleted || [])
+      ].slice(0, 50)
+      
       // If we failed due to rate limit after retries, add longer delay before next song
       if (error.message.includes('RATE_LIMIT') || error.message.includes('Rate limit')) {
         const pauseMsg = '⏸️  Pausing 30 seconds due to rate limits before continuing...'
@@ -818,6 +907,7 @@ export async function retryFailedSongs() {
           currentSong: `${song.title} by ${song.artist}`,
           startedAt: currentProcessingState.startedAt,
           statusMessage: pauseMsg,
+          recentlyCompleted: recentlyCompleted8,
           results
         })
         await sleep(30000)
@@ -831,6 +921,7 @@ export async function retryFailedSongs() {
         currentSong: `${song.title} by ${song.artist}`,
         startedAt: currentProcessingState.startedAt,
         statusMessage: null,
+        recentlyCompleted: recentlyCompleted8,
         results
       })
     }
@@ -903,6 +994,9 @@ export async function processMissingStems() {
     failed: []
   }
   
+  // Load previous state to preserve recentlyCompleted history
+  const previousState = await loadProcessingState()
+  
   // Save initial processing state
   await saveProcessingState({
     isRunning: true,
@@ -912,7 +1006,7 @@ export async function processMissingStems() {
     currentStage: 'checking',
     statusMessage: null,
     startedAt: new Date().toISOString(),
-    recentlyCompleted: [],
+    recentlyCompleted: previousState?.recentlyCompleted || [],
     results
   })
   
@@ -937,6 +1031,7 @@ export async function processMissingStems() {
       startedAt: currentProcessingState.startedAt,
       statusMessage: null,
       shouldCancel: false,
+      recentlyCompleted: currentProcessingState.recentlyCompleted || [],
       results
     })
     
