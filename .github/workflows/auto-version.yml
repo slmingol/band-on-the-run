@@ -1,13 +1,7 @@
 name: Auto Version Bump
 
+# DISABLED - manually manage versions for now
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'package.json'
-      - 'package-lock.json'
-      - 'public/version.json'
   workflow_dispatch:
 
 jobs:
