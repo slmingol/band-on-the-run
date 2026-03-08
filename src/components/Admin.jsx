@@ -611,7 +611,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 <div className="stat-label">Total Songs</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value">{stemStatus.processed}</div>
+                <div className="stat-value">{enrichmentStatus.withStems}</div>
                 <div className="stat-label">With Stems</div>
               </div>
               <div className="stat-card">
@@ -620,7 +620,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
               </div>
               <div className="stat-card">
                 <div className="stat-value">
-                  {enrichmentStatus.totalSongs - stemStatus.processed - enrichmentStatus.withPreviews}
+                  {enrichmentStatus.totalSongs - enrichmentStatus.withStems - enrichmentStatus.withPreviews}
                 </div>
                 <div className="stat-label">No Audio</div>
               </div>
@@ -630,17 +630,17 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
               <div className="enrichment-row">
                 <span className="enrichment-label">🎸 Stem Coverage:</span>
                 <span className="enrichment-value">
-                  {Math.round((stemStatus.processed / enrichmentStatus.totalSongs) * 100)}%
-                  <small> ({stemStatus.processed}/{enrichmentStatus.totalSongs})</small>
+                  {Math.round((enrichmentStatus.withStems / enrichmentStatus.totalSongs) * 100)}%
+                  <small> ({enrichmentStatus.withStems}/{enrichmentStatus.totalSongs}{stemStatus.processed !== enrichmentStatus.withStems ? `, ${stemStatus.processed} on disk` : ''})</small>
                 </span>
               </div>
               <div className="enrichment-row">
                 <span className="enrichment-label">🎵 iTunes Success:</span>
                 <span className="enrichment-value">
-                  {enrichmentStatus.totalSongs - stemStatus.processed > 0 
-                    ? Math.round((enrichmentStatus.withPreviews / (enrichmentStatus.totalSongs - stemStatus.processed)) * 100)
+                  {enrichmentStatus.totalSongs - enrichmentStatus.withStems > 0 
+                    ? Math.round((enrichmentStatus.withPreviews / (enrichmentStatus.totalSongs - enrichmentStatus.withStems)) * 100)
                     : 0}%
-                  <small> ({enrichmentStatus.withPreviews}/{enrichmentStatus.totalSongs - stemStatus.processed})</small>
+                  <small> ({enrichmentStatus.withPreviews}/{enrichmentStatus.totalSongs - enrichmentStatus.withStems})</small>
                 </span>
               </div>
               {stemStatus.storage && (
@@ -661,24 +661,24 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                   </span>
                 </div>
               )}
-              {enrichmentStatus.withPreviews === 0 && enrichmentStatus.totalSongs > stemStatus.processed && (
+              {enrichmentStatus.withPreviews === 0 && enrichmentStatus.totalSongs > enrichmentStatus.withStems && (
                 <div className="enrichment-warning">
                   ⚠️ iTunes API is currently blocking automated requests. Using long-tail enrichment approach.
                   <div style={{ marginTop: '0.5rem' }}>
                     <small>
                       <strong>Long-tail strategy:</strong> Only 3 random songs enriched per 23-hour cycle with 60s+ delays and randomization.
-                      At this rate, all {enrichmentStatus.totalSongs - stemStatus.processed} songs needing iTunes will be enriched in ~{Math.ceil((enrichmentStatus.totalSongs - stemStatus.processed) / 3)} days.
+                      At this rate, all {enrichmentStatus.totalSongs - enrichmentStatus.withStems} songs needing iTunes will be enriched in ~{Math.ceil((enrichmentStatus.totalSongs - enrichmentStatus.withStems) / 3)} days.
                       This avoids API blocking while slowly building the database.
                     </small>
                   </div>
                 </div>
               )}
-              {enrichmentStatus.withPreviews > 0 && enrichmentStatus.withPreviews < (enrichmentStatus.totalSongs - stemStatus.processed) && (
+              {enrichmentStatus.withPreviews > 0 && enrichmentStatus.withPreviews < (enrichmentStatus.totalSongs - enrichmentStatus.withStems) && (
                 <div className="enrichment-info">
-                  ℹ️ Long-tail enrichment in progress: {enrichmentStatus.withPreviews}/{enrichmentStatus.totalSongs - stemStatus.processed} songs enriched.
+                  ℹ️ Long-tail enrichment in progress: {enrichmentStatus.withPreviews}/{enrichmentStatus.totalSongs - enrichmentStatus.withStems} songs enriched.
                   <div style={{ marginTop: '0.5rem' }}>
                     <small>
-                      Remaining: ~{Math.ceil((enrichmentStatus.totalSongs - stemStatus.processed - enrichmentStatus.withPreviews) / 3)} days at 3 songs per day.
+                      Remaining: ~{Math.ceil((enrichmentStatus.totalSongs - enrichmentStatus.withStems - enrichmentStatus.withPreviews) / 3)} days at 3 songs per day.
                     </small>
                   </div>
                 </div>
