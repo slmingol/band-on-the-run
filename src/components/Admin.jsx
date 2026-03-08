@@ -367,7 +367,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
     e?.preventDefault?.()
     e?.stopPropagation?.()
     
-    if (!stemStatus) {
+    if (!stemStatus || !stemStatus.songs) {
       setMessage('❌ Please refresh stem status first')
       setTimeout(() => setMessage(''), 3000)
       return
@@ -937,7 +937,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           )}
           
           <div className="stem-controls">
-            {stemStatus && stemStatus.songs.filter(s => !s.hasStems).length > 0 && !isProcessing && (
+            {stemStatus && stemStatus.songs && stemStatus.songs.filter(s => !s.hasStems).length > 0 && !isProcessing && (
               <div className="recommended-action">
                 <p className="action-description">
                   <strong>📌 Recommended:</strong> Process all songs that are missing stems
@@ -1130,7 +1130,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
               )}
             </div>
             
-            <div className="manual-action" style={{ marginTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '2rem' : '0', paddingTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '2rem' : '0', borderTop: stemStatus?.songs.filter(s => !s.hasStems).length > 0 ? '1px solid #ddd' : 'none' }}>
+            <div className="manual-action" style={{ marginTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '2rem' : '0', paddingTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '2rem' : '0', borderTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '1px solid #ddd' : 'none' }}>
               <p className="action-description">
                 <strong>Advanced:</strong> Process a specific number of songs (starts from beginning of list)
               </p>
