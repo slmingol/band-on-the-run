@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 # Build arguments
 ARG VERSION=1.5.5
@@ -16,17 +16,13 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.description="Backend server for Band on the Run music game" \
       org.opencontainers.image.licenses="MIT"
 
-# Install Python, ffmpeg, and dependencies for demucs
-RUN apk add --no-cache \
+# Install Python, ffmpeg, and demucs dependencies
+RUN apt-get update && apt-get install -y \
     python3 \
-    py3-pip \
+    python3-pip \
     ffmpeg \
-    gcc \
-    g++ \
-    musl-dev \
-    python3-dev \
-    && pip3 install --no-cache-dir --break-system-packages demucs \
-    && apk del gcc g++ musl-dev python3-dev
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --no-cache-dir demucs
 
 WORKDIR /app
 
