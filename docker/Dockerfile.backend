@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     build-essential \
     ffmpeg \
+    && pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
     && pip3 install --no-cache-dir demucs \
     && apt-get purge -y --auto-remove build-essential python3-dev \
     && rm -rf /var/lib/apt/lists/*
