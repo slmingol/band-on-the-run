@@ -45,6 +45,9 @@ RUN npm ci --only=production
 # Copy server code
 COPY server ./server
 
+# Copy scripts directory (includes top-songs.json)
+COPY scripts ./scripts
+
 # Create directory for audio files
 RUN mkdir -p public/audio/stems
 
