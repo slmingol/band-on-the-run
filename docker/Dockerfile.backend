@@ -20,9 +20,12 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
+    python3-dev \
+    build-essential \
     ffmpeg \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip3 install --no-cache-dir demucs
+    && pip3 install --no-cache-dir demucs \
+    && apt-get purge -y --auto-remove build-essential python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
