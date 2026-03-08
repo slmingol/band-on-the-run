@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
 # This is the slowest step, so we want it cached as much as possible
 RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir \
-        torch --index-url https://download.pytorch.org/whl/cpu \
+        torch --extra-index-url https://download.pytorch.org/whl/cpu \
         demucs
 
 # Add venv to PATH so python3 and pip3 commands use it
