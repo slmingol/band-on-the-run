@@ -379,8 +379,9 @@ async function processWithDemucs(audioPath) {
   
   console.log(`🎵 Processing stems: ${filename}`)
   
-  // Try multiple demucs locations
+  // Try multiple demucs locations (prioritize python3 for Docker compatibility)
   const demucsCommands = [
+    'python3 -m demucs',
     'python3.13 -m demucs',
     '$HOME/Library/Python/3.13/bin/demucs',
     'demucs'
