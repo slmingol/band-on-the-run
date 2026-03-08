@@ -12,6 +12,8 @@ on:
 
 jobs:
   bump-version:
+    # Skip if commit was made by github-actions bot
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && github.event.head_commit.author.name != 'github-actions[bot]'"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -22,6 +24,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -62,8 +65,18 @@ jobs:
       - name: Commit version bump
         run: |
           git add package.json package-lock.json public/version.json
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No version changes to commit"
+            exit 0
+          fi
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
           git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+          
+      - name: Push changes
+        run: |
+          # Pull latest changes first to avoid conflicts
+          git pull --rebase origin main || true
           git push origin main --follow-tags
 
       - name: Create GitHub Release
