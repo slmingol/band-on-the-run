@@ -953,6 +953,19 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 <p className="action-note">
                   <small>This will automatically find and process only the songs that don't have stems yet.</small>
                 </p>
+                {!itunesApiEnabled && (
+                  <div style={{ 
+                    marginTop: '0.75rem', 
+                    padding: '0.75rem', 
+                    backgroundColor: '#fff3e0', 
+                    border: '1px solid #ff9800',
+                    borderRadius: '4px',
+                    fontSize: '0.85rem'
+                  }}>
+                    <strong>⚠️ Note:</strong> Songs without audio sources will be skipped because iTunes API is disabled. 
+                    Enable it above if you want to download preview clips for these songs.
+                  </div>
+                )}
               </div>
             )}
             

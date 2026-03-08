@@ -753,7 +753,7 @@ export async function retryFailedSongs() {
       // Check if iTunes API is enabled
       if (!ENABLE_ITUNES_API) {
         console.log(`⏭️  Skipping ${song.title} - iTunes API disabled (set ENABLE_ITUNES_API=1 to enable)`)
-        results.failed++
+        results.skipped++
         continue
       }
       
@@ -937,7 +937,7 @@ export async function processMissingStems() {
       // Check if iTunes API is enabled
       if (!ENABLE_ITUNES_API) {
         console.log(`⏭️  Skipping ${song.title} - iTunes API disabled (set ENABLE_ITUNES_API=1 to enable)`)
-        results.failed++
+        results.skipped++
         continue
       }
       
