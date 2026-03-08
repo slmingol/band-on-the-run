@@ -16,19 +16,20 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.description="Backend server for Band on the Run music game" \
       org.opencontainers.image.licenses="MIT"
 
-# Install Python, ffmpeg, and demucs dependencies
+# Install system dependencies (this layer changes rarely)
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
-    python3-dev \
-    build-essential \
     ffmpeg \
-    && python3 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
-    && /opt/venv/bin/pip install --no-cache-dir demucs \
-    && apt-get purge -y --auto-remove build-essential python3-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Create venv and install Python packages (separate layer for better caching)
+# This is the slowest step, so we want it cached as much as possible
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir \
+        torch --index-url https://download.pytorch.org/whl/cpu \
+        demucs
 
 # Add venv to PATH so python3 and pip3 commands use it
 ENV PATH="/opt/venv/bin:$PATH"

@@ -2,9 +2,22 @@ node_modules
 dist
 .git
 .gitignore
+.github
 README.md
 .DS_Store
 *.log
+*.md
+docs/
+coverage/
+.nyc_output/
+test/
+tests/
+*.test.js
+*.spec.js
+.vscode/
+.idea/
+.env
+.env.*
 # Stems are mounted via bind mount, not copied into image
 public/audio/stems
 public/audio/originals
