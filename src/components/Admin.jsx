@@ -925,6 +925,53 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 </details>
               )}
               
+              {/* Recently Completed Queue */}
+              {processingState.recentlyCompleted && processingState.recentlyCompleted.length > 0 && (
+                <div style={{ 
+                  marginTop: '1rem', 
+                  padding: '0.75rem', 
+                  backgroundColor: effectiveTheme === 'dark' ? '#1e1e1e' : '#f5f5f5',
+                  borderRadius: '6px',
+                  border: `1px solid ${effectiveTheme === 'dark' ? '#333' : '#ddd'}`
+                }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>
+                    📜 Recently Processed
+                  </h4>
+                  <div style={{ 
+                    maxHeight: '150px', 
+                    overflow: 'auto',
+                    fontSize: '0.85rem'
+                  }}>
+                    {processingState.recentlyCompleted.map((item, i) => {
+                      const statusIcon = item.status === 'success' ? '✅' : item.status === 'skipped' ? '⏭️' : '❌'
+                      const statusColor = item.status === 'success' ? '#4caf50' : item.status === 'skipped' ? '#ff9800' : '#d32f2f'
+                      return (
+                        <div 
+                          key={i} 
+                          style={{ 
+                            padding: '0.4rem 0', 
+                            borderBottom: i < processingState.recentlyCompleted.length - 1 ? `1px solid ${effectiveTheme === 'dark' ? '#2a2a2a' : '#e0e0e0'}` : 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          <span style={{ fontSize: '1rem' }}>{statusIcon}</span>
+                          <span style={{ flex: 1, color: effectiveTheme === 'dark' ? '#e0e0e0' : '#333' }}>
+                            {item.song}
+                          </span>
+                          {item.status === 'failed' && item.error && (
+                            <span style={{ fontSize: '0.75rem', color: statusColor, opacity: 0.8 }}>
+                              {item.error.substring(0, 30)}...
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              
               <button 
                 type="button"
                 onClick={handleCancelProcessing} 

@@ -909,8 +909,10 @@ export async function processMissingStems() {
     totalCount: songsWithoutStems.length,
     currentIndex: 0,
     currentSong: null,
+    currentStage: 'checking',
     statusMessage: null,
     startedAt: new Date().toISOString(),
+    recentlyCompleted: [],
     results
   })
   
@@ -946,6 +948,23 @@ export async function processMissingStems() {
         await fs.access(path.join(stemPath, 'bass.mp3'))
         console.log(`⏭️  Stems already exist: ${sanitizedTitle}`)
         results.skipped++
+        
+        // Add to recently completed list as skipped
+        const recentlyCompleted = [
+          { song: `${song.title} by ${song.artist}`, status: 'skipped', timestamp: new Date().toISOString() },
+          ...(currentProcessingState.recentlyCompleted || [])
+        ].slice(0, 10)
+        
+        await saveProcessingState({
+          isRunning: true,
+          totalCount: songsWithoutStems.length,
+          currentIndex: i,
+          currentSong: `${song.title} by ${song.artist}`,
+          startedAt: currentProcessingState.startedAt,
+          recentlyCompleted,
+          results
+        })
+        
         continue
       } catch {
         // Continue processing
@@ -960,6 +979,23 @@ export async function processMissingStems() {
         if (!ENABLE_ITUNES_API) {
           console.log(`⏭️  Skipping ${song.title} - No preview URL and iTunes API disabled`)
           results.skipped++
+          
+          // Add to recently completed list as skipped
+          const recentlyCompleted = [
+            { song: `${song.title} by ${song.artist}`, status: 'skipped', timestamp: new Date().toISOString() },
+            ...(currentProcessingState.recentlyCompleted || [])
+          ].slice(0, 10)
+          
+          await saveProcessingState({
+            isRunning: true,
+            totalCount: songsWithoutStems.length,
+            currentIndex: i,
+            currentSong: `${song.title} by ${song.artist}`,
+            startedAt: currentProcessingState.startedAt,
+            recentlyCompleted,
+            results
+          })
+          
           continue
         }
         
@@ -979,8 +1015,10 @@ export async function processMissingStems() {
         totalCount: songsWithoutStems.length,
         currentIndex: i,
         currentSong: `${song.title} by ${song.artist}`,
+        currentStage: 'processing',
         startedAt: currentProcessingState.startedAt,
         statusMessage: '🎸 Separating audio into stems...',
+        recentlyCompleted: currentProcessingState.recentlyCompleted || [],
         results
       })
       
@@ -988,14 +1026,22 @@ export async function processMissingStems() {
       await processWithDemucs(audioPath)
       results.successful++
       
+      // Add to recently completed list (keep last 10)
+      const recentlyCompleted = [
+        { song: `${song.title} by ${song.artist}`, status: 'success', timestamp: new Date().toISOString() },
+        ...(currentProcessingState.recentlyCompleted || [])
+      ].slice(0, 10)
+      
       // Clear status message after success
       await saveProcessingState({
         isRunning: true,
         totalCount: songsWithoutStems.length,
         currentIndex: i,
         currentSong: `${song.title} by ${song.artist}`,
+        currentStage: 'complete',
         startedAt: currentProcessingState.startedAt,
         statusMessage: null,
+        recentlyCompleted,
         results
       })
       
