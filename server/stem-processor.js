@@ -953,7 +953,7 @@ export async function processMissingStems() {
         const recentlyCompleted = [
           { song: `${song.title} by ${song.artist}`, status: 'skipped', timestamp: new Date().toISOString() },
           ...(currentProcessingState.recentlyCompleted || [])
-        ].slice(0, 10)
+        ].slice(0, 50)
         
         await saveProcessingState({
           isRunning: true,
@@ -984,7 +984,7 @@ export async function processMissingStems() {
           const recentlyCompleted = [
             { song: `${song.title} by ${song.artist}`, status: 'skipped', timestamp: new Date().toISOString() },
             ...(currentProcessingState.recentlyCompleted || [])
-          ].slice(0, 10)
+          ].slice(0, 50)
           
           await saveProcessingState({
             isRunning: true,
@@ -1026,11 +1026,11 @@ export async function processMissingStems() {
       await processWithDemucs(audioPath)
       results.successful++
       
-      // Add to recently completed list (keep last 10)
+      // Add to recently completed list (keep last 50)
       const recentlyCompleted = [
         { song: `${song.title} by ${song.artist}`, status: 'success', timestamp: new Date().toISOString() },
         ...(currentProcessingState.recentlyCompleted || [])
-      ].slice(0, 10)
+      ].slice(0, 50)
       
       // Clear status message after success
       await saveProcessingState({
@@ -1061,6 +1061,12 @@ export async function processMissingStems() {
       console.error(`❌ Failed: ${song.title} - ${error.message}`)
       results.failed.push({ song, error: error.message })
       
+      // Add to recently completed list as failed
+      const recentlyCompleted = [
+        { song: `${song.title} by ${song.artist}`, status: 'failed', error: error.message, timestamp: new Date().toISOString() },
+        ...(currentProcessingState.recentlyCompleted || [])
+      ].slice(0, 50)
+      
       // If we failed due to rate limit after retries, add longer delay before next song
       if (error.message.includes('RATE_LIMIT') || error.message.includes('Rate limit')) {
         const pauseMsg = '⏸️  Pausing 30 seconds due to rate limits before continuing...'
@@ -1073,6 +1079,7 @@ export async function processMissingStems() {
           currentSong: `${song.title} by ${song.artist}`,
           startedAt: currentProcessingState.startedAt,
           statusMessage: pauseMsg,
+          recentlyCompleted,
           results
         })
         
@@ -1086,6 +1093,7 @@ export async function processMissingStems() {
           currentSong: `${song.title} by ${song.artist}`,
           startedAt: currentProcessingState.startedAt,
           statusMessage: null,
+          recentlyCompleted,
           results
         })
       }
