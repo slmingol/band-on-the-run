@@ -986,8 +986,8 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             {stemStatus && stemStatus.songs && stemStatus.songs.filter(s => !s.hasStems).length > 0 && !isProcessing && (
               <div className="recommended-action" style={{
                 padding: '1rem',
-                backgroundColor: '#e8f5e9',
-                border: '1px solid #4caf50',
+                backgroundColor: '#f3e5f5',
+                border: '1px solid #9c27b0',
                 borderRadius: '8px',
                 marginBottom: '1rem'
               }}>
@@ -1009,11 +1009,11 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                   <div style={{ 
                     marginTop: '0.75rem', 
                     padding: '0.75rem', 
-                    backgroundColor: '#fff3e0', 
-                    border: '1px solid #ff9800',
+                    backgroundColor: '#ede7f6', 
+                    border: '1px solid #673ab7',
                     borderRadius: '4px',
                     fontSize: '0.85rem',
-                    color: '#663c00'
+                    color: '#4a148c'
                   }}>
                     <strong>⚠️ Note:</strong> Songs without audio sources will be skipped because iTunes API is disabled. 
                     Enable it above if you want to download preview clips for these songs.
@@ -1025,8 +1025,8 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             <div className="itunes-api-toggle" style={{ 
               marginTop: '1.5rem', 
               padding: '1rem', 
-              backgroundColor: itunesApiEnabled ? '#e8f5e9' : '#fff3e0',
-              border: `1px solid ${itunesApiEnabled ? '#4caf50' : '#ff9800'}`,
+              backgroundColor: itunesApiEnabled ? '#ede7f6' : '#f3e5f5',
+              border: `1px solid ${itunesApiEnabled ? '#673ab7' : '#9c27b0'}`,
               borderRadius: '8px',
               color: '#333'
             }}>
@@ -1199,14 +1199,14 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             <div className="manual-action" style={{ 
               marginTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '2rem' : '0', 
               padding: '1rem',
-              backgroundColor: '#f5f7fa',
-              border: '1px solid #b0bec5',
+              backgroundColor: '#f5f5f5',
+              border: '1px solid #9e9e9e',
               borderRadius: '8px'
             }}>
               <p className="action-description" style={{ margin: '0 0 0.5rem 0' }}>
                 <strong>⚙️ Advanced:</strong> Process a specific number of songs (starts from beginning of list)
               </p>
-              <p className="action-note" style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: '#666' }}>
+              <p className="action-note" style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: '#555' }}>
                 <strong>Use this when:</strong> Testing the system, prioritizing specific songs (reorder top-songs.json first), or regenerating stems for the first N songs.
                 <br/>
                 <strong>Otherwise:</strong> Use "Process Missing Stems" above - it's faster and only processes what's needed.
