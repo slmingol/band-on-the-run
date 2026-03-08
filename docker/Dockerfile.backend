@@ -16,6 +16,13 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.description="Backend server for Band on the Run music game" \
       org.opencontainers.image.licenses="MIT"
 
+# Install Python, ffmpeg, and dependencies for demucs
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    ffmpeg \
+    && pip3 install --no-cache-dir demucs
+
 WORKDIR /app
 
 # Copy package files
