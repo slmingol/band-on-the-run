@@ -960,7 +960,8 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                     backgroundColor: '#fff3e0', 
                     border: '1px solid #ff9800',
                     borderRadius: '4px',
-                    fontSize: '0.85rem'
+                    fontSize: '0.85rem',
+                    color: '#663c00'
                   }}>
                     <strong>⚠️ Note:</strong> Songs without audio sources will be skipped because iTunes API is disabled. 
                     Enable it above if you want to download preview clips for these songs.

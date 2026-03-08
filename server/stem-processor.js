@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import fetch from 'node-fetch'
+import { getEnrichedSongs } from './song-enrichment.js'
 
 const execAsync = promisify(exec)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -863,11 +864,26 @@ export async function processMissingStems() {
     throw new Error('A stem processing job is already running. Please wait for it to complete.')
   }
   
+  // Get enriched songs data
+  const enrichedData = getEnrichedSongs()
+  const enrichedSongs = enrichedData.songs
+  
   // Get current status to find songs without stems
   const status = await getStemStatus()
   const songsWithoutStems = status.songs
     .filter(s => !s.hasStems)
-    .map(s => ({ title: s.title, artist: s.artist }))
+    .map(s => {
+      // Find enriched data for this song
+      const enriched = enrichedSongs.find(es => 
+        es.title.toLowerCase() === s.title.toLowerCase() && 
+        es.artist.toLowerCase() === s.artist.toLowerCase()
+      )
+      return { 
+        title: s.title, 
+        artist: s.artist,
+        audioUrl: enriched?.audioUrl || null
+      }
+    })
   
   if (songsWithoutStems.length === 0) {
     throw new Error('All songs already have stems!')
@@ -934,15 +950,24 @@ export async function processMissingStems() {
         // Continue processing
       }
       
-      // Check if iTunes API is enabled
-      if (!ENABLE_ITUNES_API) {
-        console.log(`⏭️  Skipping ${song.title} - iTunes API disabled (set ENABLE_ITUNES_API=1 to enable)`)
-        results.skipped++
-        continue
-      }
+      // Determine preview URL
+      let previewUrl = song.audioUrl
       
-      // Search iTunes
-      const previewUrl = await searchItunes(song.title, song.artist)
+      // If no preview URL exists
+      if (!previewUrl) {
+        // Check if iTunes API is enabled
+        if (!ENABLE_ITUNES_API) {
+          console.log(`⏭️  Skipping ${song.title} - No preview URL and iTunes API disabled`)
+          results.skipped++
+          continue
+        }
+        
+        // Search iTunes for preview URL
+        console.log(`🔍 Searching iTunes for ${song.title} by ${song.artist}...`)
+        previewUrl = await searchItunes(song.title, song.artist)
+      } else {
+        console.log(`✅ Using existing preview URL for ${song.title}`)
+      }
       
       // Download audio
       const audioPath = await downloadAudio(previewUrl, song.title, song.artist)
