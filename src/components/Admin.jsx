@@ -1199,7 +1199,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             <div className="manual-action" style={{ 
               marginTop: (stemStatus?.songs?.filter(s => !s.hasStems)?.length || 0) > 0 ? '2rem' : '0', 
               padding: '1rem',
-              backgroundColor: '#f5f5f5',
+              backgroundColor: '#e0e0e0',
               border: '1px solid #9e9e9e',
               borderRadius: '8px'
             }}>
