@@ -930,11 +930,11 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 <div style={{ 
                   marginTop: '1rem', 
                   padding: '0.75rem', 
-                  backgroundColor: effectiveTheme === 'dark' ? '#1e1e1e' : '#f5f5f5',
+                  backgroundColor: effectiveTheme === 'dark' ? '#1e3a5f' : '#e3f2fd',
                   borderRadius: '6px',
-                  border: `1px solid ${effectiveTheme === 'dark' ? '#333' : '#ddd'}`
+                  border: `1px solid ${effectiveTheme === 'dark' ? '#2196f3' : '#90caf9'}`
                 }}>
-                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600', color: effectiveTheme === 'dark' ? '#90caf9' : '#1565c0' }}>
                     📜 Recently Processed (last 10)
                   </h4>
                   <div style={{ 
