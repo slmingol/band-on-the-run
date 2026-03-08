@@ -1194,6 +1194,11 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
               <p className="action-description">
                 <strong>Advanced:</strong> Process a specific number of songs (starts from beginning of list)
               </p>
+              <p className="action-note" style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: '#666' }}>
+                <strong>Use this when:</strong> Testing the system, prioritizing specific songs (reorder top-songs.json first), or regenerating stems for the first N songs.
+                <br/>
+                <strong>Otherwise:</strong> Use "Process Missing Stems" above - it's faster and only processes what's needed.
+              </p>
               <label htmlFor="stem-count">
                 Process up to <input 
                   id="stem-count"
