@@ -935,22 +935,21 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                   border: `1px solid ${effectiveTheme === 'dark' ? '#333' : '#ddd'}`
                 }}>
                   <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>
-                    📜 Recently Processed
+                    📜 Recently Processed (last 10)
                   </h4>
                   <div style={{ 
-                    maxHeight: '150px', 
-                    overflow: 'auto',
                     fontSize: '0.85rem'
                   }}>
-                    {processingState.recentlyCompleted.map((item, i) => {
+                    {processingState.recentlyCompleted.slice(0, 10).map((item, i) => {
                       const statusIcon = item.status === 'success' ? '✅' : item.status === 'skipped' ? '⏭️' : '❌'
                       const statusColor = item.status === 'success' ? '#4caf50' : item.status === 'skipped' ? '#ff9800' : '#d32f2f'
+                      const displayedCount = Math.min(10, processingState.recentlyCompleted.length)
                       return (
                         <div 
                           key={i} 
                           style={{ 
                             padding: '0.4rem 0', 
-                            borderBottom: i < processingState.recentlyCompleted.length - 1 ? `1px solid ${effectiveTheme === 'dark' ? '#2a2a2a' : '#e0e0e0'}` : 'none',
+                            borderBottom: i < displayedCount - 1 ? `1px solid ${effectiveTheme === 'dark' ? '#2a2a2a' : '#e0e0e0'}` : 'none',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem'
