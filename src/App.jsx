@@ -53,7 +53,7 @@ function App() {
 
   return (
     <div className="app">
-      <StemStatus />
+      <StemStatus effectiveTheme={effectiveTheme} />
       <LibraryStats />
       
       <header className="app-header">

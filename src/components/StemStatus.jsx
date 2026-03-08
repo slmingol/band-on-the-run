@@ -4,7 +4,7 @@ import './StemStatus.css';
 const STEM_SERVER_URL = ''; // Use relative URLs for API calls
 const POLL_INTERVAL = 5000; // Poll every 5 seconds
 
-function StemStatus() {
+function StemStatus({ effectiveTheme = 'dark' }) {
   const [status, setStatus] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [prevProcessed, setPrevProcessed] = useState(null);
@@ -48,15 +48,33 @@ function StemStatus() {
 
   if (!status) return null; // Don't show if server is not available
 
+  const isDark = effectiveTheme === 'dark';
+  const backgroundColor = isDark ? '#1e3a5f' : '#e3f2fd';
+  const borderColor = isDark ? '#2196f3' : '#90caf9';
+  const textColor = isDark ? '#ffffff' : '#000000';
+  const labelColor = isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+  const primaryColor = isDark ? '#90caf9' : '#1565c0';
+  const tooltipBg = isDark ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.95)';
+  const tooltipBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
   return (
-    <div className={`stem-status-widget ${isProcessing ? 'processing' : ''}`}>
+    <div 
+      className={`stem-status-widget ${isProcessing ? 'processing' : ''}`}
+      style={{
+        background: backgroundColor,
+        borderColor: borderColor,
+        color: textColor,
+        '--tooltip-bg': tooltipBg,
+        '--tooltip-border': tooltipBorder
+      }}
+    >
       <div className="stem-status-content">
         <div className="stem-icon">{isProcessing ? '⚙️' : '🎸'}</div>
         <div className="stem-stats">
-          <div className="stem-count">
-            <strong>{status.processed}</strong> / {status.total}
+          <div className="stem-count" style={{ color: textColor }}>
+            <strong style={{ color: primaryColor }}>{status.processed}</strong> / {status.total}
           </div>
-          <div className="stem-label">
+          <div className="stem-label" style={{ color: labelColor }}>
             {isProcessing ? 'processing...' : 'stems ready'}
           </div>
         </div>

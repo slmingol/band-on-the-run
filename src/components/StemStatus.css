@@ -3,11 +3,10 @@
   top: 1rem;
   right: 1rem;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   padding: 0.75rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
   cursor: default;
@@ -15,8 +14,6 @@
 }
 
 .stem-status-widget:hover {
-  background: rgba(0, 0, 0, 0.85);
-  border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
@@ -28,14 +25,14 @@
   right: 0;
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(0, 0, 0, 0.9);
+  background: var(--tooltip-bg, rgba(0, 0, 0, 0.9));
   border-radius: 6px;
   font-size: 0.75rem;
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--tooltip-border, rgba(255, 255, 255, 0.1));
 }
 
 .stem-status-widget:hover::after {
@@ -72,11 +69,9 @@
 .stem-count {
   font-size: 0.95rem;
   line-height: 1.2;
-  color: #fff;
 }
 
 .stem-count strong {
-  color: var(--primary-color, #1db954);
   font-size: 1.1rem;
 }
 
@@ -84,13 +79,11 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  opacity: 0.7;
   line-height: 1;
 }
 
 /* Processing indicator */
 .stem-status-widget.processing {
-  border-color: rgba(29, 185, 84, 0.4);
   animation: processingGlow 2s ease-in-out infinite;
 }
 
@@ -99,7 +92,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
   50% {
-    box-shadow: 0 4px 16px rgba(29, 185, 84, 0.3);
+    box-shadow: 0 4px 16px rgba(33, 150, 243, 0.4);
   }
 }
 
@@ -108,7 +101,7 @@
 }
 
 .stem-status-widget.processing .stem-label {
-  color: var(--primary-color, #1db954);
+  opacity: 1;
 }
 
 @keyframes spin {
