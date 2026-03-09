@@ -159,7 +159,7 @@ const ITUNES_CONFIG = {
   RATE_LIMIT_DELAY: 300000,  // Wait 5 minutes when hitting rate limit
   BATCH_SIZE: 3,             // Tiny batches of 3 songs
   BATCH_DELAY: 300000,       // 5 minutes between batches
-  MAX_ITUNES_REQUESTS: 100,  // Backend handles enrichment with proper rate limiting (was 0/disabled)
+  MAX_ITUNES_REQUESTS: 99999,  // Process all songs needing enrichment (no limit)
   RANDOMIZE_DELAY: true,     // Add random jitter to avoid pattern detection
   MIN_RANDOM_DELAY: 30000,   // Minimum 30s additional random delay
   MAX_RANDOM_DELAY: 120000   // Maximum 2min additional random delay
