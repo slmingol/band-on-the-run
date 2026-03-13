@@ -44,7 +44,7 @@ npm run add-songs          # Add songs incrementally to library
 ```
 .github/workflows/         # auto-version.yml, docker-build.yml, cleanup-*.yml
 config/                    # song-library-config.json (incremental song management)
-docker/                    # Dockerfile (multi-stage), nginx.conf, docker-compose files
+docker/                    # Dockerfile (multi-stage), nginx.conf, podman compose files
 docs/                      # 7 .md files: QUICKSTART, STEM_SEPARATION, SPOTIFY_SETUP, etc.
 public/
   audio/
@@ -99,13 +99,13 @@ Updates `package.json`, `package-lock.json`, and `public/version.json`, then com
 **Docker Usage**:
 ```bash
 # Development (hot reload)
-docker-compose -f docker-compose.dev.yml up
+podman compose -f docker-compose.dev.yml up
 
 # Production (build from source)
-docker-compose -f docker-compose.prod.yml up --build
+podman compose -f docker-compose.prod.yml up --build
 
 # Or use main compose file
-docker compose up
+podman compose up
 ```
 
 ## Validation Checklist (Before Merge/Deploy)
@@ -185,8 +185,8 @@ Script appends new songs to `scripts/top-songs.json`, never replaces. Edit `batc
 
 **Docker**: Multi-stage build (Node 20 Alpine → Nginx Alpine). Backend has separate Dockerfile.
 ```bash
-docker-compose -f docker-compose.dev.yml up      # Dev with hot reload
-docker-compose -f docker-compose.prod.yml up     # Production
+podman compose -f docker-compose.dev.yml up      # Dev with hot reload
+podman compose -f docker-compose.prod.yml up     # Production
 ```
 
 **Auto-versioning**: Commits to `main` bump version based on message:
