@@ -1,0 +1,61 @@
+name: Generate Diagram PNGs
+
+on:
+  push:
+    paths:
+      - 'docs/diagrams/*.excalidraw'
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-pngs:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Excalidraw Export CLI
+        run: |
+          npm install -g excalidraw-export-cli
+      
+      - name: Install Playwright browsers
+        run: |
+          npx playwright install --with-deps chromium
+      
+      - name: Generate PNGs from Excalidraw files
+        run: |
+          for file in docs/diagrams/*.excalidraw; do
+            if [ -f "$file" ]; then
+              output="${file%.excalidraw}.png"
+              echo "Converting $file to $output"
+              excalidraw-export "$file" "$output"
+            fi
+          done
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Commit and push PNG files
+        run: |
+          git add docs/diagrams/*.png
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: generate PNG exports from Excalidraw diagrams"
+            git push
+          fi
