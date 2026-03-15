@@ -494,7 +494,7 @@
     {
       "type": "text",
       "id": "docker-label",
-      "x": 970,
+      "x": 1160,
       "y": 410,
       "width": 160,
       "height": 25,
@@ -612,8 +612,8 @@
     {
       "type": "text",
       "id": "label-api-direct",
-      "x": 750,
-      "y": 540,
+      "x": 680,
+      "y": 630,
       "width": 240,
       "height": 40,
       "fontSize": 13,
