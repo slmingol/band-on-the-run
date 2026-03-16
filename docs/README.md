@@ -37,11 +37,11 @@ A music guessing game where you guess the song one instrument at a time!
 
 ## Architecture
 
-![Client-Server Architecture](diagrams/client-server-architecture.png)
+![Client-Server Architecture](https://raw.githubusercontent.com/slmingol/band-on-the-run/main/docs/diagrams/client-server-architecture.png)
 
 *The application follows a client-server architecture with a React frontend and Node.js backend for audio processing and song management.*
 
-_View the [editable diagram](diagrams/client-server-architecture.excalidraw) in [Excalidraw](https://excalidraw.com) or VS Code with the Excalidraw extension._
+_View the [editable diagram](https://github.com/slmingol/band-on-the-run/blob/main/docs/diagrams/client-server-architecture.excalidraw) in [Excalidraw](https://excalidraw.com) or VS Code with the Excalidraw extension._
 
 ## Getting Started
 

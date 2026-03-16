@@ -161,11 +161,11 @@ docker pull ghcr.io/slmingol/band-on-the-run:latest
 
 ## CI/CD Pipeline
 
-![CI/CD Pipeline](diagrams/cicd-pipeline.png)
+![CI/CD Pipeline](https://raw.githubusercontent.com/slmingol/band-on-the-run/main/docs/diagrams/cicd-pipeline.png)
 
 *The CI/CD pipeline automatically versions, builds, and publishes Docker images on every push to main.*
 
-_View the [editable diagram](diagrams/cicd-pipeline.excalidraw) in [Excalidraw](https://excalidraw.com) or VS Code with the Excalidraw extension._
+_View the [editable diagram](https://github.com/slmingol/band-on-the-run/blob/main/docs/diagrams/cicd-pipeline.excalidraw) in [Excalidraw](https://excalidraw.com) or VS Code with the Excalidraw extension._
 
 The repository uses GitHub Actions for automated builds and releases:
 
