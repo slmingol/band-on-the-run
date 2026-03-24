@@ -1216,7 +1216,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                   id="stem-count"
                   type="number" 
                   min="1" 
-                  max="2500" 
+                  max="5000" 
                   value={stemCount || ''}
                   onChange={(e) => {
                     const val = e.target.value === '' ? '' : parseInt(e.target.value)
@@ -1230,9 +1230,9 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 /> songs
               </label>
               
-              {stemCount > 2500 && (
+              {stemCount > 5000 && (
                 <div className="admin-error">
-                  ⚠️ Maximum is 2500 songs
+                  ⚠️ Maximum is 5000 songs
                 </div>
               )}
               {stemCount < 1 && stemCount !== '' && (

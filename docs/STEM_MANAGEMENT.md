@@ -70,7 +70,7 @@ node server/stem-processor.js
 
 ## Song List
 
-The top songs are curated in `scripts/top-songs.json`. The default list includes 100 classic songs, but you can expand it up to 2500 songs.
+The top songs are curated in `scripts/top-songs.json`. The default list includes 100 classic songs, but you can expand it up to 5000 songs.
 
 **To add more songs:**
 
@@ -79,7 +79,7 @@ The top songs are curated in `scripts/top-songs.json`. The default list includes
    ```json
    { "title": "Song Name", "artist": "Artist Name" }
    ```
-3. The system supports up to 2500 songs
+3. The system supports up to 5000 songs
 4. Songs are processed in order from the list
 
 **Current top 100 includes classics like:**

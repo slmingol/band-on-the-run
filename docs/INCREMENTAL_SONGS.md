@@ -1,6 +1,6 @@
 # Incremental Song Library Management
 
-This document describes the incremental approach to managing the Band on the Run song library, allowing you to scale from the current 492 songs up to 2500 songs in a controlled, manageable way.
+This document describes the incremental approach to managing the Band on the Run song library, allowing you to scale from the current 492 songs up to 5000 songs in a controlled, manageable way.
 
 ## Overview
 
@@ -16,7 +16,7 @@ Configuration is stored in `config/song-library-config.json`:
 ```json
 {
   "currentSongCount": 492,
-  "targetSongCount": 2500,
+  "targetSongCount": 5000,
   "batchSize": 100,
   "lastUpdated": "2026-02-28",
   "notes": "Incremental song library management"
@@ -26,7 +26,7 @@ Configuration is stored in `config/song-library-config.json`:
 ### Configuration Fields
 
 - **currentSongCount**: Automatically updated when songs are added
-- **targetSongCount**: Your ultimate goal (adjustable - can be 500, 1000, 2500, etc.)
+- **targetSongCount**: Your ultimate goal (adjustable - can be 500, 1000, 2500, 5000, etc.)
 - **batchSize**: How many songs to add per run (default: 100)
 - **lastUpdated**: Timestamp of last library update
 
@@ -61,20 +61,20 @@ Edit `config/song-library-config.json`:
 
 ```json
 {
-  "targetSongCount": 1000  // Stop at 1000 instead of 2500
+  "targetSongCount": 1000  // Stop at 1000 instead of 5000
 }
 ```
 
 ## Workflow Examples
 
-### Gradual Expansion to 2500 Songs
+### Gradual Expansion to 5000 Songs
 
 ```bash
 # Start with 492 songs
 npm run add-songs  # → 592 songs
 npm run add-songs  # → 692 songs
 npm run add-songs  # → 792 songs
-# ... continue until 2500
+# ... continue until 5000
 ```
 
 ### Processing Stems for New Songs
@@ -114,16 +114,16 @@ This structure allows:
 - Genre diversity across batches
 - Simple debugging if specific songs cause issues
 
-## Extending Beyond 2500 Songs
+## Extending Beyond 5000 Songs
 
-To add more songs beyond the initial 2500:
+To add more songs beyond the initial 5000:
 
 1. Edit `scripts/add-songs.js`
 2. Add more songs to the `allSongs` array in `generateNextBatch()`
 3. Update `config/song-library-config.json`:
    ```json
    {
-     "targetSongCount": 5000  // New target
+     "targetSongCount": 10000  // New target
    }
    ```
 4. Run `npm run add-songs` as needed
@@ -131,7 +131,7 @@ To add more songs beyond the initial 2500:
 ## Benefits of Incremental Approach
 
 ### 1. **Gradual Processing**
-- Don't need to process 2500 stems at once
+- Don't need to process 5000 stems at once
 - Can test and verify in smaller batches
 - Easier to monitor and troubleshoot
 
@@ -143,7 +143,7 @@ To add more songs beyond the initial 2500:
 ### 3. **Flexible Scaling**
 - Start small, grow as needed
 - Can pause at any point (500, 1000, 1500, etc.)
-- No need to commit to full 2500 immediately
+- No need to commit to full 5000 immediately
 
 ### 4. **Resource Management**
 - Spread stem processing over time

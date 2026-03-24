@@ -284,7 +284,7 @@ function generateNextBatch(startIndex, count) {
     { "title": "Some Kind of Monster", "artist": "Metallica" },
     { "title": "The Day That Never Comes", "artist": "Metallica" },
 
-    // Add more genres and eras to reach 2500 total...
+    // Add more genres and eras to reach 5000 total...
     // This structure allows continuing indefinitely
   ];
 
