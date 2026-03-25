@@ -45,6 +45,9 @@ RUN npm ci --only=production
 # Copy server code
 COPY server ./server
 
+# Copy config directory (song library configuration)
+COPY config ./config
+
 # Copy scripts directory (includes top-songs.json)
 COPY scripts ./scripts
 
