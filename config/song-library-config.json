@@ -1,7 +1,7 @@
 {
-  "currentSongCount": 592,
+  "currentSongCount": 1653,
   "targetSongCount": 5000,
-  "lastUpdated": "2026-02-28",
+  "lastUpdated": "2026-03-24",
   "batchSize": 500,
   "notes": "Incremental song library management. Add songs in batches rather than regenerating the entire list."
 }

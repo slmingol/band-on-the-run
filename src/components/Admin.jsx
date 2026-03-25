@@ -729,16 +729,16 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
               <div className="library-progress">
                 <div className="progress-info">
                   <span>Library Growth Progress</span>
-                  <span><strong>{stemStatus.total}</strong> / {libraryConfig.targetSongCount} songs</span>
+                  <span><strong>{stemStatus?.total || libraryConfig.currentSongCount}</strong> / {libraryConfig.targetSongCount} songs</span>
                 </div>
                 <div className="progress-bar">
                   <div 
                     className="progress-fill" 
-                    style={{ width: `${(stemStatus.total / libraryConfig.targetSongCount) * 100}%` }}
+                    style={{ width: `${((stemStatus?.total || libraryConfig.currentSongCount) / libraryConfig.targetSongCount) * 100}%` }}
                   />
                 </div>
                 <p className="progress-detail">
-                  <small>Last updated: {libraryConfig.lastUpdated} • Run <code>npm run add-songs</code> to add {libraryConfig.batchSize} more songs</small>
+                  <small>Last updated: {libraryConfig.lastUpdated} • {stemServerAvailable ? `Run npm run add-songs to add ${libraryConfig.batchSize} more songs` : 'Stem server offline'}</small>
                 </p>
               </div>
             )}
