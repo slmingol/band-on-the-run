@@ -612,6 +612,12 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           <h2>⚙️ Admin Settings</h2>
         </div>
 
+        {message && (
+          <div className="admin-message">
+            {message}
+          </div>
+        )}
+
         <div className="admin-section theme-selector-admin">
           <h3>🎨 Theme</h3>
           <div className="theme-options">
@@ -1629,12 +1635,6 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             )}
           </div>
         </div>
-
-        {message && (
-          <div className="admin-message">
-            {message}
-          </div>
-        )}
 
         <div className="admin-info">
           <h3>Debug Info</h3>
