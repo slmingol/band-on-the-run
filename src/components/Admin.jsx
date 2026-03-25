@@ -725,29 +725,33 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
               )}
             </div>
             
-            {libraryConfig && (
-              <div className="library-progress">
-                <div className="progress-info">
-                  <span>Library Growth Progress</span>
-                  <span><strong>{stemStatus?.total || libraryConfig.currentSongCount}</strong> / {libraryConfig.targetSongCount} songs</span>
-                </div>
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: `${((stemStatus?.total || libraryConfig.currentSongCount) / libraryConfig.targetSongCount) * 100}%` }}
-                  />
-                </div>
-                <p className="progress-detail">
-                  <small>Last updated: {libraryConfig.lastUpdated} • {stemServerAvailable ? `Run npm run add-songs to add ${libraryConfig.batchSize} more songs` : 'Stem server offline'}</small>
-                </p>
-              </div>
-            )}
             <div className="library-info">
               <p><small>
                 🎸 <strong>Stems:</strong> AI-separated instrument tracks (bass, drums, vocals, other) for progressive reveal<br/>
                 🎵 <strong>iTunes:</strong> 30-second preview clips from iTunes API (rate-limited)<br/>
                 ⚠️ <strong>No Audio:</strong> Songs without stems where iTunes API is unavailable
               </small></p>
+            </div>
+          </div>
+        )}
+
+        {libraryConfig && (
+          <div className="admin-section">
+            <h3>📚 Library Growth Progress</h3>
+            <div className="library-progress">
+              <div className="progress-info">
+                <span>Current Progress</span>
+                <span><strong>{stemStatus?.total || libraryConfig.currentSongCount}</strong> / {libraryConfig.targetSongCount} songs</span>
+              </div>
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill" 
+                  style={{ width: `${((stemStatus?.total || libraryConfig.currentSongCount) / libraryConfig.targetSongCount) * 100}%` }}
+                />
+              </div>
+              <p className="progress-detail">
+                <small>Last updated: {libraryConfig.lastUpdated} • {stemServerAvailable ? `Run npm run add-songs to add ${libraryConfig.batchSize} more songs` : 'Stem server offline'}</small>
+              </p>
             </div>
           </div>
         )}
