@@ -438,40 +438,6 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           try {
             const statusResponse = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
             if (statusResponse.ok) {
-    e?.preventDefault?.()
-    e?.stopPropagation?.()
-    
-    if (!stemStatus || !stemStatus.songs) {
-      setMessage('❌ Please refresh stem status first')
-      setTimeout(() => setMessage(''), 3000)
-      return
-    }
-    
-    const missingCount = stemStatus.songs.filter(s => !s.hasStems).length
-    
-    if (missingCount === 0) {
-      setMessage('✅ All songs already have stems!')
-      setTimeout(() => setMessage(''), 3000)
-      return
-    }
-
-    setIsProcessing(true)
-    setMessage(`🔄 Starting processing for ${missingCount} songs without stems... Check the terminal for progress.`)
-
-    try {
-      const response = await fetch(`${STEM_SERVER_URL}/api/stems/process-missing`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-
-      if (response.ok) {
-        setMessage(`✅ Processing started! Processing ${missingCount} songs. This will take approximately ${Math.ceil(missingCount * 10 / 60)} minutes. Status updates every 30 seconds...`)
-        
-        // Auto-refresh status every 30 seconds while processing
-        const interval = setInterval(async () => {
-          try {
-            const statusResponse = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
-            if (statusResponse.ok) {
               const status = await statusResponse.json()
               setStemStatus(status)
               setMessage(`⏳ Processing... Check terminal for details.`)
