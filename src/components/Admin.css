@@ -28,14 +28,15 @@
 .admin-section {
   margin-bottom: 30px;
   padding: 20px;
-  background: #f8f9fa;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
 }
 
 .admin-section h3 {
   margin-top: 0;
   margin-bottom: 10px;
-  color: #333;
+  color: var(--text-color);
 }
 
 .admin-section.theme-selector-admin {
@@ -1019,4 +1020,56 @@
 .toggle-switch input:disabled + .toggle-slider {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Library Progress Section */
+.library-progress {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.progress-info strong {
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 24px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.6s ease;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.progress-detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.progress-detail small {
+  color: var(--text-color);
 }
