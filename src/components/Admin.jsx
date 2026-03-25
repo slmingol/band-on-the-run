@@ -18,6 +18,8 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
   const [itunesApiEnabled, setItunesApiEnabled] = useState(false)
   const [songsNeedingItunes, setSongsNeedingItunes] = useState(null)
   const [showNeedingItunes, setShowNeedingItunes] = useState(false)
+  const [addSongsCount, setAddSongsCount] = useState(100)
+  const [isAddingSongs, setIsAddingSongs] = useState(false)
   
   // Danger Zone security
   const [dangerZoneUnlocked, setDangerZoneUnlocked] = useState(false)
@@ -363,7 +365,79 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
     }
   }
 
+  const handleAddSongs = async () => {
+    if (!stemServerAvailable) {
+      setMessage('❌ Stem server not running! Start it with: npm run stem-server')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+
+    setIsAddingSongs(true)
+    setMessage(`📚 Adding ${addSongsCount} songs to the library... This will take a moment.`)
+
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/songs/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: addSongsCount })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setMessage(`✅ Successfully added ${addSongsCount} songs! New total: ${result.newCount} / ${result.target}`)
+        
+        // Refresh status to show new count
+        refreshStemStatus()
+        setIsAddingSongs(false)
+        setTimeout(() => setMessage(''), 5000)
+      } else {
+        const error = await response.json()
+        setMessage(`❌ Failed to add songs: ${error.error}`)
+        setIsAddingSongs(false)
+        setTimeout(() => setMessage(''), 5000)
+      }
+    } catch (error) {
+      setMessage('❌ Failed to connect to server')
+      setIsAddingSongs(false)
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
+
   const handleProcessMissingStems = async (e) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
+    
+    if (!stemStatus || !stemStatus.songs) {
+      setMessage('❌ Please refresh stem status first')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+    
+    const missingCount = stemStatus.songs.filter(s => !s.hasStems).length
+    
+    if (missingCount === 0) {
+      setMessage('✅ All songs already have stems!')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+
+    setIsProcessing(true)
+    setMessage(`🔄 Starting processing for ${missingCount} songs without stems... Check the terminal for progress.`)
+
+    try {
+      const response = await fetch(`${STEM_SERVER_URL}/api/stems/process-missing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (response.ok) {
+        setMessage(`✅ Processing started! Processing ${missingCount} songs. This will take approximately ${Math.ceil(missingCount * 10 / 60)} minutes. Status updates every 30 seconds...`)
+        
+        // Auto-refresh status every 30 seconds while processing
+        const interval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`${STEM_SERVER_URL}/api/stems/status`)
+            if (statusResponse.ok) {
     e?.preventDefault?.()
     e?.stopPropagation?.()
     
@@ -809,6 +883,72 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
         )}
 
 
+
+        <div className="admin-section">
+          <h3>📚 Song Library Management</h3>
+          <p className="admin-description">
+            Add more songs to your library from a curated collection of 5000+ songs.
+            Songs are added from the pre-configured list in scripts/add-songs.js.
+          </p>
+          
+          {!stemServerAvailable && (
+            <div className="admin-warning">
+              ⚠️ Stem server not running. Start it with: <code>npm run stem-server</code>
+            </div>
+          )}
+          
+          {libraryConfig && (
+            <div className="library-capacity">
+              <p>
+                <strong>Current Library:</strong> {stemStatus?.total || 0} songs<br/>
+                <strong>Target Capacity:</strong> {libraryConfig.targetSongCount} songs<br/>
+                <strong>Remaining Capacity:</strong> {libraryConfig.targetSongCount - (stemStatus?.total || 0)} songs
+              </p>
+            </div>
+          )}
+          
+          <div className="add-songs-controls">
+            <label htmlFor="add-songs-count">
+              Add <input 
+                id="add-songs-count"
+                type="number" 
+                min="1" 
+                max="1000" 
+                value={addSongsCount || ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? '' : parseInt(e.target.value)
+                  setAddSongsCount(val)
+                }}
+                onBlur={() => {
+                  if (addSongsCount === '') setAddSongsCount(100)
+                }}
+                className="add-songs-input"
+                disabled={isAddingSongs || !stemServerAvailable}
+              /> songs to library
+            </label>
+            
+            {addSongsCount > 1000 && (
+              <div className="admin-error">
+                ⚠️ Maximum is 1000 songs per batch
+              </div>
+            )}
+            
+            <button 
+              onClick={handleAddSongs}
+              disabled={isAddingSongs || !stemServerAvailable || !addSongsCount || addSongsCount < 1 || addSongsCount > 1000}
+              className="admin-button primary"
+            >
+              {isAddingSongs ? '⏳ Adding Songs...' : '📚 Add Songs'}
+            </button>
+          </div>
+          
+          <div className="action-note" style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#555' }}>
+            <p>
+              <strong>Note:</strong> After adding songs, use "Process Missing Stems" below to generate their audio stems.
+              Songs are added from a curated list organized by genre and era.
+            </p>
+          </div>
+        </div>
 
         <div className="admin-section">
           <h3>🎸 Stem Management</h3>

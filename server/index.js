@@ -1,8 +1,12 @@
 import express from 'express'
 import cors from 'cors'
-import { readFile } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
+import { exec } from 'child_process'
+import { promisify } from 'util'
 import { processStemsForTopSongs, getStemStatus, checkForInterruptedJob, getProcessingState, resumeInterruptedJob, retryFailedSongs, cancelProcessing, processMissingStems, getItunesApiConfig, setItunesApiEnabled } from './stem-processor.js'
 import { enrichAllSongs, getEnrichedSongs, needsRefresh, getItunesApiStatus, getSongsNeedingItunes, saveEnrichedSongs, getEnrichmentState } from './song-enrichment.js'
+
+const execAsync = promisify(exec)
 
 const app = express()
 const PORT = 3001
@@ -318,6 +322,73 @@ app.post('/api/config/itunes', async (req, res) => {
     })
   } catch (error) {
     res.status(500).json({ error: error.message })
+  }
+})
+
+// Add songs to library
+app.post('/api/songs/add', async (req, res) => {
+  const { count } = req.body
+  
+  if (!count || count < 1 || count > 1000) {
+    return res.status(400).json({ error: 'Count must be between 1 and 1000' })
+  }
+
+  let originalBatchSize
+  try {
+    // Read current config
+    const configPath = './config/song-library-config.json'
+    const config = JSON.parse(await readFile(configPath, 'utf-8'))
+    
+    // Store original batch size
+    originalBatchSize = config.batchSize
+    
+    // Temporarily set batch size to requested amount
+    config.batchSize = count
+    await writeFile(configPath, JSON.stringify(config, null, 2))
+    
+    // Run the add-songs script
+    console.log(`📚 Adding ${count} songs to library...`)
+    const { stdout, stderr } = await execAsync('npm run add-songs', {
+      cwd: process.cwd(),
+      env: { ...process.env }
+    })
+    
+    // Restore original batch size
+    const updatedConfig = JSON.parse(await readFile(configPath, 'utf-8'))
+    updatedConfig.batchSize = originalBatchSize
+    await writeFile(configPath, JSON.stringify(updatedConfig, null, 2))
+    
+    // Also update the public config
+    const publicConfigPath = './public/config/song-library-config.json'
+    await writeFile(publicConfigPath, JSON.stringify(updatedConfig, null, 2))
+    
+    console.log('✅ Songs added successfully')
+    console.log(stdout)
+    
+    // Trigger a refresh of enriched songs
+    await enrichAllSongs()
+    
+    res.json({ 
+      message: `Successfully added ${count} songs to the library`,
+      newCount: updatedConfig.currentSongCount,
+      target: updatedConfig.targetSongCount,
+      output: stdout
+    })
+  } catch (error) {
+    console.error('❌ Error adding songs:', error)
+    // Try to restore original batch size on error
+    try {
+      if (typeof originalBatchSize !== 'undefined') {
+        const config = JSON.parse(await readFile('./config/song-library-config.json', 'utf-8'))
+        config.batchSize = originalBatchSize
+        await writeFile('./config/song-library-config.json', JSON.stringify(config, null, 2))
+      }
+    } catch {}
+    
+    res.status(500).json({ 
+      error: error.message,
+      stderr: error.stderr || ''
+    })
   }
 })
 
