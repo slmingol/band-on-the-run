@@ -268,6 +268,16 @@ app.post('/api/stems/cancel', async (req, res) => {
 // Process only songs without stems
 app.post('/api/stems/process-missing', async (req, res) => {
   try {
+    // Check if server is ready
+    try {
+      getEnrichedSongs() // This will throw if not ready
+    } catch (error) {
+      return res.status(503).json({ 
+        error: 'Server is still loading songs. Please wait a moment and try again.',
+        loading: true
+      })
+    }
+    
     // Start processing in background
     processMissingStems()
       .then(result => {
