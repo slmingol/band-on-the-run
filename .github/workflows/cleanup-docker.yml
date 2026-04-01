@@ -2,14 +2,14 @@ name: Cleanup Docker Images
 
 on:
   schedule:
-    # Run daily at 3 AM UTC
-    - cron: '0 3 * * *'
+    # Run weekly on Sunday at 3 AM UTC (reduced from daily to prevent over-cleanup)
+    - cron: '0 3 * * 0'
   workflow_dispatch:
     inputs:
       keep_count:
         description: 'Minimum number of versions to keep'
         required: false
-        default: '5'
+        default: '10'
         type: number
       untagged_only:
         description: 'Delete only untagged versions'
@@ -34,8 +34,8 @@ jobs:
         with:
           package-name: 'band-on-the-run'
           package-type: 'container'
-          min-versions-to-keep: ${{ inputs.keep_count || 5 }}
-          delete-only-untagged-versions: ${{ inputs.untagged_only || true }}
+          min-versions-to-keep: ${{ inputs.keep_count || 10 }}
+          delete-only-untagged-versions: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cleanup untagged backend images
@@ -43,13 +43,14 @@ jobs:
         with:
           package-name: 'band-on-the-run-backend'
           package-type: 'container'
-          min-versions-to-keep: ${{ inputs.keep_count || 5 }}
-          delete-only-untagged-versions: ${{ inputs.untagged_only || true }}
+          min-versions-to-keep: ${{ inputs.keep_count || 10 }}
+          delete-only-untagged-versions: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
   cleanup-old-tags:
     runs-on: ubuntu-latest
-    if: ${{ inputs.untagged_only == false || github.event_name == 'schedule' }}
+    # ONLY run when manually dispatched with untagged_only=false (never on schedule)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.untagged_only == false }}
     permissions:
       packages: write
       contents: read
@@ -60,9 +61,9 @@ jobs:
         with:
           package-name: 'band-on-the-run'
           package-type: 'container'
-          min-versions-to-keep: 3
+          min-versions-to-keep: 10
           delete-only-untagged-versions: false
-          ignore-versions: '^(latest|v?\\d+\\.\\d+\\.\\d+)$'
+          ignore-versions: '^(latest|main|v?\\d+\\.\\d+\\.\\d+|pr-\\d+)$'
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cleanup old backend tagged images (except latest, semver tags)
@@ -70,7 +71,7 @@ jobs:
         with:
           package-name: 'band-on-the-run-backend'
           package-type: 'container'
-          min-versions-to-keep: 3
+          min-versions-to-keep: 10
           delete-only-untagged-versions: false
-          ignore-versions: '^(latest|v?\\d+\\.\\d+\\.\\d+)$'
+          ignore-versions: '^(latest|main|v?\\d+\\.\\d+\\.\\d+|pr-\\d+)$'
           token: ${{ secrets.GITHUB_TOKEN }}
