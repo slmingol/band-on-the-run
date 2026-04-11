@@ -6,6 +6,9 @@ ARG VERSION=1.1.0
 ARG BUILD_DATE
 ARG VCS_REF
 
+# Update npm to latest version
+RUN npm install -g npm@11.11.0
+
 WORKDIR /app
 
 # Copy package files
