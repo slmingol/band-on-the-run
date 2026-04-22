@@ -32,7 +32,20 @@ console.log(`➕ Adding ${songsToAdd} new songs...`);
 
 // Song library generator - continues from where we left off
 // This is organized by genre/era for easier management
-const newSongs = generateNextBatch(existingSongs.length, songsToAdd);
+const candidateSongs = generateNextBatch(existingSongs.length, songsToAdd * 2); // Get extra to account for duplicates
+
+// Filter out duplicates by checking title + artist combination
+const existingKeys = new Set(
+  existingSongs.map(s => `${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`)
+);
+
+const newSongs = candidateSongs
+  .filter(s => !existingKeys.has(`${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`))
+  .slice(0, songsToAdd);
+
+if (newSongs.length < songsToAdd) {
+  console.log(`⚠️  Only ${newSongs.length} unique songs available (${songsToAdd - newSongs.length} were duplicates)`);
+}
 
 // Append new songs to existing library
 const updatedLibrary = [...existingSongs, ...newSongs];
@@ -288,6 +301,6 @@ function generateNextBatch(startIndex, count) {
     // This structure allows continuing indefinitely
   ];
 
-  // Return only the songs we need for this batch
-  return allSongs.slice(0, count);
+  // Return only the songs we need for this batch, starting from the appropriate index
+  return allSongs.slice(startIndex, startIndex + count);
 }
