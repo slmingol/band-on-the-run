@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename)
 
 // Paths
 const PROJECT_ROOT = path.join(__dirname, '..')
-const TOP_SONGS_PATH = path.join(PROJECT_ROOT, 'scripts', 'top-songs.json')
+const TOP_SONGS_PATH = path.join(PROJECT_ROOT, 'server', 'data', 'top-songs.json')
 const ENRICHED_SONGS_PATH = path.join(PROJECT_ROOT, 'server', 'data', 'top-songs-enriched.json')
 const ENRICHMENT_STATE_PATH = path.join(PROJECT_ROOT, 'server', 'data', 'enrichment-state.json')
 const STEMS_DIR = path.join(PROJECT_ROOT, 'public', 'audio', 'stems', 'htdemucs')

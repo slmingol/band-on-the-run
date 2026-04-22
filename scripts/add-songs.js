@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename);
 const configPath = path.join(__dirname, '..', 'config', 'song-library-config.json');
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-// Load existing songs
-const songsPath = path.join(__dirname, 'top-songs.json');
+// Load existing songs from writable directory
+const songsPath = path.join(__dirname, '..', 'server', 'data', 'top-songs.json');
 const existingSongs = JSON.parse(fs.readFileSync(songsPath, 'utf8'));
 
 console.log(`📚 Current library: ${existingSongs.length} songs`);
