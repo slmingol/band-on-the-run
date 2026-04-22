@@ -1,7 +1,7 @@
 {
   "name": "band-on-the-run",
   "private": true,
-  "version": "1.9.62",
+  "version": "1.9.63",
   "type": "module",
   "scripts": {
     "dev": "vite",
