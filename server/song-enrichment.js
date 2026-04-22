@@ -315,13 +315,17 @@ export function saveEnrichedSongs(songs) {
 // Load previously enriched songs from disk
 function loadEnrichedSongs() {
   try {
+    console.log(`🔍 Checking for enriched songs at: ${ENRICHED_SONGS_PATH}`)
     if (fs.existsSync(ENRICHED_SONGS_PATH)) {
       const enriched = JSON.parse(fs.readFileSync(ENRICHED_SONGS_PATH, 'utf8'))
       console.log(`📂 Loaded ${enriched.length} previously enriched songs from disk`)
       return enriched
+    } else {
+      console.log(`⚠️  No enriched songs file found at ${ENRICHED_SONGS_PATH}`)
     }
   } catch (error) {
     console.error('⚠️  Failed to load enriched songs:', error.message)
+    console.error('   Path:', ENRICHED_SONGS_PATH)
   }
   return []
 }
