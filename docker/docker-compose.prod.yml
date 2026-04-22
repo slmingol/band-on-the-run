@@ -16,6 +16,7 @@ services:
     volumes:
       - ../public/audio:/app/public/audio
       - ../scripts:/app/scripts:ro
+      - ./backend-data:/app/server/data
     environment:
       - NODE_ENV=production
     restart: unless-stopped

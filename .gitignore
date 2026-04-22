@@ -33,6 +33,13 @@ server/processing-state.json
 
 # Audio files (generated/downloaded content)
 public/audio/
-# Enrichment state (runtime)
+
+# Server data directory (enriched songs, processing state)
+server/data/
+
+# Docker volume directories
+docker/backend-data/
+
+# Enrichment state (runtime) - DEPRECATED: moved to server/data/
 server/enrichment-state.json
 server/processing-state.json

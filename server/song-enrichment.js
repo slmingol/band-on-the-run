@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename)
 // Paths
 const PROJECT_ROOT = path.join(__dirname, '..')
 const TOP_SONGS_PATH = path.join(PROJECT_ROOT, 'scripts', 'top-songs.json')
-const ENRICHED_SONGS_PATH = path.join(PROJECT_ROOT, 'scripts', 'top-songs-enriched.json')
-const ENRICHMENT_STATE_PATH = path.join(PROJECT_ROOT, 'server', 'enrichment-state.json')
+const ENRICHED_SONGS_PATH = path.join(PROJECT_ROOT, 'server', 'data', 'top-songs-enriched.json')
+const ENRICHMENT_STATE_PATH = path.join(PROJECT_ROOT, 'server', 'data', 'enrichment-state.json')
 const STEMS_DIR = path.join(PROJECT_ROOT, 'public', 'audio', 'stems', 'htdemucs')
 
 // Cache
@@ -447,7 +447,13 @@ async function resumeEnrichment(state) {
     }
   }
   
+  // ✅ INITIALIZE CACHE IMMEDIATELY when resuming
+  enrichedSongsCache = [...enrichedSongs, ...songsToSkip].sort((a, b) => a.id - b.id)
+  lastEnriched = new Date()
+  console.log(`✅ Cache initialized with ${enrichedSongsCache.filter(s => s.stems || s.audioUrl).length} songs`)
+  
   let itunesRequestsMade = state.processed
+  let successfulInResume = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
   
   // Process remaining songs
   for (let i = 0; i < remainingQueue.length; i++) {
@@ -460,6 +466,9 @@ async function resumeEnrichment(state) {
     const audioUrl = await fetchItunesPreview(song)
     enrichedSongs.push({ ...song, audioUrl })
     itunesRequestsMade++
+    if (audioUrl) {
+      successfulInResume++
+    }
     
     // Save enriched songs after each successful enrichment (incremental save)
     if (audioUrl) {
@@ -469,6 +478,9 @@ async function resumeEnrichment(state) {
         console.error('⚠️  Failed to save enriched songs incrementally:', error.message)
       }
     }
+    
+    // Update cache in real-time so API returns latest data
+    enrichedSongsCache = [...enrichedSongs, ...songsToSkip].sort((a, b) => a.id - b.id)
     
     // Save state after each song
     await saveEnrichmentState({
@@ -480,8 +492,9 @@ async function resumeEnrichment(state) {
       startTime: state.startTime
     })
     
-    const successful = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
-    console.log(`📊 Progress: ${itunesRequestsMade}/${state.total} | ${successful} successful | ${itunesRequestsMade - successful} failed`)
+    const currentCycleSuccessful = successfulInResume - enrichedSongs.filter(s => !s.stems && s.audioUrl && !remainingQueue.slice(i + 1).find(rs => rs.id === s.id)).length + enrichedSongs.filter(s => !s.stems && s.audioUrl).length - successfulInResume
+    const failedInCurrentCycle = (itunesRequestsMade - state.processed) - currentCycleSuccessful
+    console.log(`📊 Progress: ${itunesRequestsMade}/${state.total} | ${successfulInResume} successful | ${itunesRequestsMade - successfulInResume} failed`)
     
     // Pause between batches
     if (itunesRequestsMade % ITUNES_CONFIG.BATCH_SIZE === 0 && i < remainingQueue.length - 1) {
@@ -588,14 +601,18 @@ export async function enrichAllSongs(resumeFromState = false) {
   
   console.log(`🎸 Matched ${songsWithStems.filter(s => s.stems).length} songs with stems`)
   
+  // ✅ INITIALIZE CACHE IMMEDIATELY with stem songs + previously enriched audioUrls
+  // This makes the API available right away while iTunes enrichment continues in background
+  enrichedSongsCache = songsWithStems
+  lastEnriched = new Date()
+  console.log(`✅ Cache initialized with ${songsWithStems.filter(s => s.stems || s.audioUrl).length} songs (${songsWithStems.filter(s => s.stems).length} with stems, ${songsWithStems.filter(s => s.audioUrl).length} with audioUrls)`)
+  
   // Enrich with iTunes previews - long-tail approach with aggressive backoff
   const songsNeedingEnrichment = songsWithStems.filter(s => !s.stems && !s.audioUrl)
   const maxItunesRequests = ITUNES_CONFIG.MAX_ITUNES_REQUESTS
   
   if (maxItunesRequests === 0) {
     console.log('🚫 iTunes enrichment disabled (MAX_ITUNES_REQUESTS = 0)')
-    enrichedSongsCache = songsWithStems
-    lastEnriched = new Date()
     itunesApiStatus.currentlyEnriching = false
     return songsWithStems
   }
@@ -635,6 +652,7 @@ export async function enrichAllSongs(resumeFromState = false) {
   }
   
   let itunesRequestsMade = 0
+  let successfulInThisCycle = 0
   
   // Process selected songs with aggressive delays and randomization
   for (let i = 0; i < shuffledNeedingEnrichment.length; i++) {
@@ -649,6 +667,9 @@ export async function enrichAllSongs(resumeFromState = false) {
     const audioUrl = await fetchItunesPreview(song)
     enrichedSongs.push({ ...song, audioUrl })
     itunesRequestsMade++
+    if (audioUrl) {
+      successfulInThisCycle++
+    }
     
     // Save enriched songs after each successful enrichment (incremental save)
     if (audioUrl) {
@@ -658,6 +679,9 @@ export async function enrichAllSongs(resumeFromState = false) {
         console.error('⚠️  Failed to save enriched songs incrementally:', error.message)
       }
     }
+    
+    // Update cache in real-time so API returns latest data
+    enrichedSongsCache = [...enrichedSongs, ...songsToSkip].sort((a, b) => a.id - b.id)
     
     // Save state after each song
     await saveEnrichmentState({
@@ -669,8 +693,7 @@ export async function enrichAllSongs(resumeFromState = false) {
       startTime: currentEnrichmentState?.startTime || new Date().toISOString()
     })
     
-    const successful = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
-    console.log(`📊 Progress: ${itunesRequestsMade}/${shuffledNeedingEnrichment.length} | ${successful} successful | ${itunesRequestsMade - successful} failed`)
+    console.log(`📊 Progress: ${itunesRequestsMade}/${shuffledNeedingEnrichment.length} | ${successfulInThisCycle} successful | ${itunesRequestsMade - successfulInThisCycle} failed`)
     
     // Pause between batches
     if (itunesRequestsMade % ITUNES_CONFIG.BATCH_SIZE === 0 && itunesRequestsMade < shuffledNeedingEnrichment.length) {
@@ -691,7 +714,7 @@ export async function enrichAllSongs(resumeFromState = false) {
   const withoutAudio = enrichedSongs.filter(s => !s.stems && !s.audioUrl).length
   console.log(`✅ Enrichment complete: ${withStems} with stems, ${withPreviews} with iTunes previews, ${withoutAudio} without audio`)
   if (itunesRequestsMade > 0) {
-    console.log(`📊 iTunes success rate: ${Math.round((withPreviews / itunesRequestsMade) * 100)}%`)
+    console.log(`📊 iTunes success rate: ${Math.round((successfulInThisCycle / itunesRequestsMade) * 100)}%`)
   }
   
   // Mark enrichment as complete

@@ -45,10 +45,54 @@ jobs:
     
     steps:
       - name: Cleanup old artifacts
-        uses: c-hive/gha-remove-artifacts@v1
-        with:
-          age: '${{ inputs.days_old || 7 }} days'
-          skip-recent: 3
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Cleaning up artifacts older than ${{ inputs.days_old || 7 }} days..."
+          
+          # Calculate cutoff date
+          DAYS_OLD=${{ inputs.days_old || 7 }}
+          CUTOFF_DATE=$(date -u -d "$DAYS_OLD days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-${DAYS_OLD}d +%Y-%m-%dT%H:%M:%SZ)
+          
+          echo "Cutoff date: $CUTOFF_DATE"
+          echo "Keeping 3 most recent artifacts..."
+          
+          # Get all artifacts
+          artifacts=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/actions/artifacts \
+            --paginate \
+            --jq '.artifacts[] | select(.expired == false)')
+          
+          if [ -z "$artifacts" ]; then
+            echo "No artifacts found"
+            exit 0
+          fi
+          
+          # Process artifacts
+          echo "$artifacts" | jq -r --arg cutoff "$CUTOFF_DATE" \
+            'select(.created_at < $cutoff) | .id' \
+          | sort -rn \
+          | tail -n +4 \
+          | while read -r artifact_id; do
+            if [ -n "$artifact_id" ]; then
+              artifact_name=$(echo "$artifacts" | jq -r --arg id "$artifact_id" 'select(.id == ($id|tonumber)) | .name')
+              echo "Processing artifact: $artifact_name (ID: $artifact_id)"
+              
+              if [ "${{ inputs.dry_run }}" = "true" ]; then
+                echo "  DRY RUN: Would delete artifact $artifact_id"
+              else
+                gh api \
+                  --method DELETE \
+                  -H "Accept: application/vnd.github+json" \
+                  /repos/${{ github.repository }}/actions/artifacts/$artifact_id \
+                  && echo "  ✓ Deleted artifact $artifact_id" \
+                  || echo "  ✗ Failed to delete artifact $artifact_id"
+              fi
+            fi
+          done
+          
+          echo "Artifact cleanup complete!"
 
   cleanup-docker-images:
     runs-on: ubuntu-latest

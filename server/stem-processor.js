@@ -14,7 +14,7 @@ const TOP_SONGS_PATH = path.join(PROJECT_ROOT, 'scripts', 'top-songs.json')
 const ORIGINALS_DIR = path.join(PROJECT_ROOT, 'public', 'audio', 'originals')
 const STEMS_DIR = path.join(PROJECT_ROOT, 'public', 'audio', 'stems', 'htdemucs')
 const GAME_LOGIC_PATH = path.join(PROJECT_ROOT, 'src', 'utils', 'gameLogic.js')
-const PROCESSING_STATE_PATH = path.join(PROJECT_ROOT, 'server', 'processing-state.json')
+const PROCESSING_STATE_PATH = path.join(PROJECT_ROOT, 'server', 'data', 'processing-state.json')
 
 // Configuration: Disable iTunes API to avoid rate limiting (set to 0 to disable)
 let ENABLE_ITUNES_API = parseInt(process.env.ENABLE_ITUNES_API || '0', 10)
