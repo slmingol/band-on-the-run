@@ -10,7 +10,7 @@ const execAsync = promisify(exec)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PROJECT_ROOT = path.join(__dirname, '..')
 
-const TOP_SONGS_PATH = path.join(PROJECT_ROOT, 'scripts', 'top-songs.json')
+const TOP_SONGS_PATH = path.join(PROJECT_ROOT, 'server', 'data', 'top-songs.json')
 const ORIGINALS_DIR = path.join(PROJECT_ROOT, 'public', 'audio', 'originals')
 const STEMS_DIR = path.join(PROJECT_ROOT, 'public', 'audio', 'stems', 'htdemucs')
 const GAME_LOGIC_PATH = path.join(PROJECT_ROOT, 'src', 'utils', 'gameLogic.js')
