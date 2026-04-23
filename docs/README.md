@@ -89,6 +89,33 @@ band-on-the-run/
 └── package.json
 ```
 
+## Song Database
+
+The application features a comprehensive song database with **5,556 unique songs** spanning from the 1950s to 2026, covering 40+ music categories including:
+
+- 📈 Billboard Hot 100 hits and #1 songs
+- 🎸 Rock (classic, alternative, punk, metal, indie)
+- 🎤 Pop (60s-2026, teen pop, K-pop, power pop)
+- 🎺 Jazz standards and funk classics
+- 🤠 Country (classic and modern)
+- 💃 Dance, EDM, and disco
+- 🎶 R&B, soul, and Motown
+- 🌎 Latin and international hits
+- 🎬 Movie soundtracks
+- And many more!
+
+**For complete details**, see [docs/SONG_DATABASE.md](docs/SONG_DATABASE.md) which documents all categories, sources, and how to manage the database.
+
+### Building the Song Database
+
+To rebuild the comprehensive database from all sources:
+
+```bash
+node scripts/build-comprehensive-song-database.js
+```
+
+This aggregates songs from Billboard, Rolling Stone, UK charts, and dozens of genre-specific sources, automatically deduplicating to produce the final database.
+
 ## Adding Songs
 
 To add more songs, edit `src/utils/gameLogic.js` and add entries to the `SONGS` array:
@@ -119,7 +146,7 @@ For a production app, you would need:
 
 - [ ] Real multi-track audio with instrument isolation
 - [ ] Multiplayer mode
-- [ ] More songs (1000+)
+- [x] Large song library (5,556 songs across 40+ categories)
 - [ ] Weekly challenges
 - [ ] Leaderboards
 - [ ] Different difficulty levels
