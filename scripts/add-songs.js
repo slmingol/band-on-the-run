@@ -30,25 +30,50 @@ if (songsToAdd <= 0) {
 
 console.log(`➕ Adding ${songsToAdd} new songs...`);
 
-// Song library generator - continues from where we left off
-// This is organized by genre/era for easier management
-const candidateSongs = generateNextBatch(existingSongs.length, songsToAdd * 2); // Get extra to account for duplicates
-
-// Filter out duplicates by checking title + artist combination
+// Build set of existing songs for duplicate checking
 const existingKeys = new Set(
   existingSongs.map(s => `${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`)
 );
 
-const newSongs = candidateSongs
-  .filter(s => !existingKeys.has(`${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`))
-  .slice(0, songsToAdd);
+// Keep fetching candidates until we have enough unique songs
+const newSongs = [];
+let searchOffset = existingSongs.length;
+const batchSize = 500; // Fetch in batches
 
-if (newSongs.length < songsToAdd) {
-  console.log(`⚠️  Only ${newSongs.length} unique songs available (${songsToAdd - newSongs.length} were duplicates)`);
+while (newSongs.length < songsToAdd) {
+  const candidateBatch = generateNextBatch(searchOffset, batchSize);
+  
+  if (candidateBatch.length === 0) {
+    console.log(`⚠️  Reached end of song database. Only ${newSongs.length} unique songs available.`);
+    break;
+  }
+  
+  // Filter duplicates from this batch
+  const uniqueFromBatch = candidateBatch.filter(s => {
+    const key = `${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`;
+    if (existingKeys.has(key)) return false;
+    existingKeys.add(key); // Add to set so we don't add it again
+    return true;
+  });
+  
+  newSongs.push(...uniqueFromBatch);
+  searchOffset += batchSize;
+  
+  // Stop if we have enough
+  if (newSongs.length >= songsToAdd) {
+    break;
+  }
+}
+
+// Trim to exact count requested
+const finalSongs = newSongs.slice(0, songsToAdd);
+
+if (finalSongs.length < songsToAdd) {
+  console.log(`⚠️  Only found ${finalSongs.length} unique songs (${songsToAdd - finalSongs.length} short of target)`);
 }
 
 // Append new songs to existing library
-const updatedLibrary = [...existingSongs, ...newSongs];
+const updatedLibrary = [...existingSongs, ...finalSongs];
 
 // Write updated library
 fs.writeFileSync(songsPath, JSON.stringify(updatedLibrary, null, 2));
@@ -67,7 +92,8 @@ const publicConfigPath = path.join(__dirname, '..', 'public', 'config', 'song-li
 fs.mkdirSync(path.dirname(publicConfigPath), { recursive: true });
 fs.writeFileSync(publicConfigPath, JSON.stringify(config, null, 2));
 
-console.log(`✅ Added ${newSongs.length} songs`);
+console.log(`✅ Added ${finalSongs.length} songs`);
+console.log(`📊 Total library size: ${updatedLibrary.length} songs`);
 console.log(`📊 Total library size: ${updatedLibrary.length} songs`);
 console.log(`🎯 Progress: ${Math.round((updatedLibrary.length / config.targetSongCount) * 100)}%`);
 
