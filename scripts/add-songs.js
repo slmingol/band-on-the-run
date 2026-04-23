@@ -35,41 +35,33 @@ const existingKeys = new Set(
   existingSongs.map(s => `${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`)
 );
 
-// Keep fetching candidates until we have enough unique songs
-const newSongs = [];
-let searchOffset = existingSongs.length;
-const batchSize = 500; // Fetch in batches
+console.log(`🔍 Loading comprehensive song database...`);
 
-while (newSongs.length < songsToAdd) {
-  const candidateBatch = generateNextBatch(searchOffset, batchSize);
-  
-  if (candidateBatch.length === 0) {
-    console.log(`⚠️  Reached end of song database. Only ${newSongs.length} unique songs available.`);
-    break;
-  }
-  
-  // Filter duplicates from this batch
-  const uniqueFromBatch = candidateBatch.filter(s => {
-    const key = `${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`;
-    if (existingKeys.has(key)) return false;
-    existingKeys.add(key); // Add to set so we don't add it again
-    return true;
-  });
-  
-  newSongs.push(...uniqueFromBatch);
-  searchOffset += batchSize;
-  
-  // Stop if we have enough
-  if (newSongs.length >= songsToAdd) {
-    break;
-  }
+// Load the entire comprehensive database
+const billboardSongsPath = path.join(__dirname, 'top-songs.json');
+const allSongs = JSON.parse(fs.readFileSync(billboardSongsPath, 'utf8'));
+
+console.log(`📀 Loaded ${allSongs.length} songs from database`);
+console.log(`🔄 Filtering out ${existingKeys.size} existing songs...`);
+
+// Filter out all existing songs
+const availableSongs = allSongs.filter(s => {
+  const key = `${s.title.toLowerCase()}|||${s.artist.toLowerCase()}`;
+  return !existingKeys.has(key);
+});
+
+console.log(`✅ ${availableSongs.length} unique songs available to add`);
+
+if (availableSongs.length === 0) {
+  console.log(`⚠️  No new songs available! All songs from database already in library.`);
+  process.exit(0);
 }
 
-// Trim to exact count requested
-const finalSongs = newSongs.slice(0, songsToAdd);
+// Take only what we need
+const finalSongs = availableSongs.slice(0, songsToAdd);
 
 if (finalSongs.length < songsToAdd) {
-  console.log(`⚠️  Only found ${finalSongs.length} unique songs (${songsToAdd - finalSongs.length} short of target)`);
+  console.log(`⚠️  Only ${finalSongs.length} unique songs available (${songsToAdd - finalSongs.length} short of target)`);
 }
 
 // Append new songs to existing library
@@ -94,24 +86,5 @@ fs.writeFileSync(publicConfigPath, JSON.stringify(config, null, 2));
 
 console.log(`✅ Added ${finalSongs.length} songs`);
 console.log(`📊 Total library size: ${updatedLibrary.length} songs`);
-console.log(`📊 Total library size: ${updatedLibrary.length} songs`);
 console.log(`🎯 Progress: ${Math.round((updatedLibrary.length / config.targetSongCount) * 100)}%`);
 
-function generateNextBatch(startIndex, count) {
-  // Load Billboard #1 hits database from scripts/top-songs.json
-  // This contains 1,653 songs from Billboard charts spanning 1950s-2020s
-  const billboardSongsPath = path.join(__dirname, 'top-songs.json');
-  const allSongs = JSON.parse(fs.readFileSync(billboardSongsPath, 'utf8'));
-  
-  // OLD APPROACH - hardcoded songs (kept for reference):
-  // const allSongs = [
-    //   { "title": "Twist and Shout", "artist": "The Beatles" },
-    //   { "title": "Help!", "artist": "The Beatles" },
-    //   ... 208 hardcoded songs ...
-    // ];
-  
-  console.log(`📀 Loaded ${allSongs.length} songs from Billboard database`);
-
-  // Return only the songs we need for this batch, starting from the appropriate index
-  return allSongs.slice(startIndex, startIndex + count);
-}

@@ -1,7 +1,7 @@
 {
   "name": "band-on-the-run",
   "private": true,
-  "version": "1.9.69",
+  "version": "1.9.73",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "download-audio": "node scripts/download-and-split.js",
     "stem-server": "node server/index.js",
-    "add-songs": "node scripts/add-songs.js"
+    "add-songs": "node scripts/add-songs.js",
+    "deduplicate": "node scripts/deduplicate-library.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
