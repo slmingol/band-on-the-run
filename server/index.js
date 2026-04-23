@@ -368,9 +368,14 @@ app.post('/api/songs/add', async (req, res) => {
     updatedConfig.batchSize = originalBatchSize
     await writeFile(configPath, JSON.stringify(updatedConfig, null, 2))
     
-    // Also update the public config
-    const publicConfigPath = './public/config/song-library-config.json'
-    await writeFile(publicConfigPath, JSON.stringify(updatedConfig, null, 2))
+    // Also update the public config (optional - may not exist in Docker)
+    try {
+      const publicConfigPath = './public/config/song-library-config.json'
+      await writeFile(publicConfigPath, JSON.stringify(updatedConfig, null, 2))
+    } catch (error) {
+      // Ignore if public directory doesn't exist - not critical in production
+      console.log('⚠️  Could not update public config (non-critical)')
+    }
     
     console.log('✅ Songs added successfully')
     console.log(stdout)
