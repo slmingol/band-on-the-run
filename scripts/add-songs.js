@@ -70,19 +70,35 @@ const updatedLibrary = [...existingSongs, ...finalSongs];
 // Write updated library
 fs.writeFileSync(songsPath, JSON.stringify(updatedLibrary, null, 2));
 
-// Also copy to public directory for frontend access
-const publicSongsPath = path.join(__dirname, '..', 'public', 'top-songs.json');
-fs.writeFileSync(publicSongsPath, JSON.stringify(updatedLibrary, null, 2));
+// Also copy to public directory for frontend access (optional - may not exist in Docker)
+try {
+  const publicSongsPath = path.join(__dirname, '..', 'public', 'top-songs.json');
+  fs.writeFileSync(publicSongsPath, JSON.stringify(updatedLibrary, null, 2));
+  console.log(`📄 Updated public songs file`);
+} catch (error) {
+  console.log(`⚠️  Could not update public songs file (non-critical): ${error.message}`);
+}
 
 // Update config
 config.currentSongCount = updatedLibrary.length;
 config.lastUpdated = new Date().toISOString().split('T')[0];
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
-// Also update the public copy for browser access
-const publicConfigPath = path.join(__dirname, '..', 'public', 'config', 'song-library-config.json');
-fs.mkdirSync(path.dirname(publicConfigPath), { recursive: true });
-fs.writeFileSync(publicConfigPath, JSON.stringify(config, null, 2));
+// Also update the public copy for browser access (optional - may not exist in all environments)
+try {
+  const publicConfigPath = path.join(__dirname, '..', 'public', 'config', 'song-library-config.json');
+  const publicConfigDir = path.dirname(publicConfigPath);
+  
+  // Ensure directory exists
+  if (!fs.existsSync(publicConfigDir)) {
+    fs.mkdirSync(publicConfigDir, { recursive: true });
+  }
+  
+  fs.writeFileSync(publicConfigPath, JSON.stringify(config, null, 2));
+  console.log(`📄 Updated public config`);
+} catch (error) {
+  console.log(`⚠️  Could not update public config (non-critical): ${error.message}`);
+}
 
 console.log(`✅ Added ${finalSongs.length} songs`);
 console.log(`📊 Total library size: ${updatedLibrary.length} songs`);
