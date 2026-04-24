@@ -742,10 +742,21 @@ export function getEnrichedSongs() {
     throw new Error('Songs not yet enriched. Server is still loading.')
   }
   
+  // Get actual library size from top-songs.json
+  let librarySize = enrichedSongsCache.length
+  try {
+    const topSongsData = fs.readFileSync(TOP_SONGS_PATH, 'utf8')
+    const allSongs = JSON.parse(topSongsData)
+    librarySize = allSongs.length
+  } catch (error) {
+    console.error('⚠️  Could not read library size:', error.message)
+  }
+  
   return {
     songs: enrichedSongsCache,
     lastEnriched: lastEnriched,
-    totalSongs: enrichedSongsCache.length,
+    totalSongs: enrichedSongsCache.length,      // Playable songs (with stems or iTunes)
+    librarySize: librarySize,                    // Total songs in library file
     withStems: enrichedSongsCache.filter(s => s.stems).length,
     withPreviews: enrichedSongsCache.filter(s => !s.stems && s.audioUrl).length
   }

@@ -747,12 +747,12 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             <div className="library-progress">
               <div className="progress-info">
                 <span>Current Progress</span>
-                <span><strong>{enrichmentStatus.totalSongs}</strong> / {libraryConfig.targetSongCount} songs</span>
+                <span><strong>{enrichmentStatus.librarySize || enrichmentStatus.totalSongs}</strong> / {libraryConfig.targetSongCount} songs</span>
               </div>
               <div className="progress-bar">
                 <div 
                   className="progress-fill" 
-                  style={{ width: `${(enrichmentStatus.totalSongs / libraryConfig.targetSongCount) * 100}%` }}
+                  style={{ width: `${((enrichmentStatus.librarySize || enrichmentStatus.totalSongs) / libraryConfig.targetSongCount) * 100}%` }}
                 />
               </div>
               <p className="progress-detail">
@@ -876,9 +876,9 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           {libraryConfig && enrichmentStatus && (
             <div className="library-capacity">
               <p>
-                <strong>Current Library:</strong> {enrichmentStatus.totalSongs} songs<br/>
+                <strong>Current Library:</strong> {enrichmentStatus.librarySize || enrichmentStatus.totalSongs} songs<br/>
                 <strong>Target Capacity:</strong> {libraryConfig.targetSongCount} songs<br/>
-                <strong>Remaining Capacity:</strong> {libraryConfig.targetSongCount - enrichmentStatus.totalSongs} songs
+                <strong>Remaining Capacity:</strong> {libraryConfig.targetSongCount - (enrichmentStatus.librarySize || enrichmentStatus.totalSongs)} songs
               </p>
             </div>
           )}
