@@ -76,6 +76,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
           const data = await response.json()
           setEnrichmentStatus({
             totalSongs: data.totalSongs,
+            librarySize: data.librarySize,
             withStems: data.withStems,
             withPreviews: data.withPreviews,
             lastEnriched: data.lastEnriched
