@@ -655,7 +655,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             <div className="stats-grid">
               <div className="stat-card">
                 <div className="stat-value">{enrichmentStatus.totalSongs}</div>
-                <div className="stat-label">Total Songs</div>
+                <div className="stat-label">Playable Songs</div>
               </div>
               <div className="stat-card">
                 <div className="stat-value">{enrichmentStatus.withStems}</div>
@@ -672,6 +672,11 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
                 <div className="stat-label">No Audio</div>
               </div>
             </div>
+            {enrichmentStatus.librarySize && enrichmentStatus.librarySize > enrichmentStatus.totalSongs && (
+              <div className="library-size-note">
+                <small>📚 Full library contains {enrichmentStatus.librarySize.toLocaleString()} songs ({(enrichmentStatus.librarySize - enrichmentStatus.totalSongs).toLocaleString()} not yet enriched)</small>
+              </div>
+            )}
             
             <div className="enrichment-details">
               <div className="enrichment-row">
@@ -734,6 +739,7 @@ function Admin({ onBack, themePreference, effectiveTheme, onThemeChange }) {
             
             <div className="library-info">
               <p><small>
+                📀 <strong>Playable Songs:</strong> Songs with stems or iTunes previews that can be played in-game<br/>
                 🎸 <strong>Stems:</strong> AI-separated instrument tracks (bass, drums, vocals, other) for progressive reveal<br/>
                 🎵 <strong>iTunes:</strong> 30-second preview clips from iTunes API (rate-limited)<br/>
                 ⚠️ <strong>No Audio:</strong> Songs without stems where iTunes API is unavailable

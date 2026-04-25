@@ -956,32 +956,43 @@ export async function processMissingStems() {
     throw new Error('A stem processing job is already running. Please wait for it to complete.')
   }
   
-  // Get enriched songs data
+  // Get enriched songs data (this is our source of truth - only songs the app knows about)
   const enrichedData = getEnrichedSongs()
   const enrichedSongs = enrichedData.songs
   
-  // Get current status to find songs without stems
-  const status = await getStemStatus()
-  const songsWithoutStems = status.songs
-    .filter(s => !s.hasStems)
-    .map(s => {
-      // Find enriched data for this song
-      const enriched = enrichedSongs.find(es => 
-        es.title.toLowerCase() === s.title.toLowerCase() && 
-        es.artist.toLowerCase() === s.artist.toLowerCase()
-      )
-      return { 
-        title: s.title, 
-        artist: s.artist,
-        audioUrl: enriched?.audioUrl || null
-      }
-    })
+  // Check which enriched songs don't have stems on disk
+  const songsWithoutStems = []
+  for (const song of enrichedSongs) {
+    // Skip if this song already has stems in the enriched data
+    if (song.stems) {
+      continue
+    }
+    
+    // Double-check if stems exist on disk (in case enrichment is out of date)
+    const sanitizedTitle = `${song.artist}-${song.title}`.replace(/[^a-z0-9]/gi, '_')
+    const stemPath = path.join(STEMS_DIR, sanitizedTitle)
+    try {
+      await fs.access(path.join(stemPath, 'bass.mp3'))
+      // Stems exist on disk but not in enriched data - skip processing
+      continue
+    } catch {
+      // No stems - add to processing queue
+      songsWithoutStems.push({
+        title: song.title,
+        artist: song.artist,
+        audioUrl: song.audioUrl || null
+      })
+    }
+  }
   
   if (songsWithoutStems.length === 0) {
     throw new Error('All songs already have stems!')
   }
   
-  console.log(`🔄 Processing ${songsWithoutStems.length} songs without stems...`)
+  console.log(`🔄 Processing ${songsWithoutStems.length} songs without stems (from ${enrichedSongs.length} playable songs)...`)
+  console.log(`   Songs with audioUrl: ${songsWithoutStems.filter(s => s.audioUrl).length}`)
+  console.log(`   Songs needing iTunes: ${songsWithoutStems.filter(s => !s.audioUrl).length}`)
+  console.log()
   
   // Ensure directories exist
   await fs.mkdir(ORIGINALS_DIR, { recursive: true })
