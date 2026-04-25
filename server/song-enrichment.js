@@ -457,7 +457,7 @@ async function resumeEnrichment(state) {
   console.log(`✅ Cache initialized with ${enrichedSongsCache.filter(s => s.stems || s.audioUrl).length} songs`)
   
   let itunesRequestsMade = state.processed
-  let successfulInResume = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
+  let successfulInResume = 0  // Track only NEW successes in this resume session
   
   // Process remaining songs
   for (let i = 0; i < remainingQueue.length; i++) {
@@ -498,7 +498,8 @@ async function resumeEnrichment(state) {
     
     const currentCycleSuccessful = successfulInResume - enrichedSongs.filter(s => !s.stems && s.audioUrl && !remainingQueue.slice(i + 1).find(rs => rs.id === s.id)).length + enrichedSongs.filter(s => !s.stems && s.audioUrl).length - successfulInResume
     const failedInCurrentCycle = (itunesRequestsMade - state.processed) - currentCycleSuccessful
-    console.log(`📊 Progress: ${itunesRequestsMade}/${state.total} | ${successfulInResume} successful | ${itunesRequestsMade - successfulInResume} failed`)
+    const totalEnriched = enrichedSongs.filter(s => !s.stems && s.audioUrl).length
+    console.log(`📊 Progress: ${itunesRequestsMade}/${state.total} | Session: ${successfulInResume} new, ${itunesRequestsMade - state.processed - successfulInResume} failed | Total enriched: ${totalEnriched}`)
     
     // Pause between batches
     if (itunesRequestsMade % ITUNES_CONFIG.BATCH_SIZE === 0 && i < remainingQueue.length - 1) {
