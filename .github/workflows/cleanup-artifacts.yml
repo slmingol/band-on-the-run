@@ -104,6 +104,7 @@ jobs:
     steps:
       - name: Cleanup old Docker images
         uses: actions/delete-package-versions@v5
+        continue-on-error: true
         with:
           package-name: 'band-on-the-run'
           package-type: 'container'

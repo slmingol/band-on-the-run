@@ -32,6 +32,7 @@ jobs:
     steps:
       - name: Cleanup untagged frontend images
         uses: actions/delete-package-versions@v5
+        continue-on-error: true
         with:
           package-name: 'band-on-the-run'
           package-type: 'container'
@@ -41,6 +42,7 @@ jobs:
 
       - name: Cleanup untagged backend images
         uses: actions/delete-package-versions@v5
+        continue-on-error: true
         with:
           package-name: 'band-on-the-run-backend'
           package-type: 'container'
@@ -59,6 +61,7 @@ jobs:
     steps:
       - name: Cleanup old frontend tagged images (except latest, semver tags)
         uses: actions/delete-package-versions@v5
+        continue-on-error: true
         with:
           package-name: 'band-on-the-run'
           package-type: 'container'
@@ -69,6 +72,7 @@ jobs:
 
       - name: Cleanup old backend tagged images (except latest, semver tags)
         uses: actions/delete-package-versions@v5
+        continue-on-error: true
         with:
           package-name: 'band-on-the-run-backend'
           package-type: 'container'
