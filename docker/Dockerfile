@@ -46,6 +46,7 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
+COPY docker/nginx-map.conf /etc/nginx/conf.d/00-map.conf
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy and setup entrypoint script
