@@ -59,7 +59,7 @@ jobs:
             type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./docker/Dockerfile
@@ -120,7 +120,7 @@ jobs:
             type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
 
       - name: Build and push Backend Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./docker/Dockerfile.backend
