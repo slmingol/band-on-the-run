@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Update npm to latest version
 RUN npm install -g npm@11.11.0
