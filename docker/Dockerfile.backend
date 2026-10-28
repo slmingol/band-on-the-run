@@ -1,4 +1,4 @@
-FROM node:24-slim
+FROM node:26-slim
 
 # Build arguments
 ARG VERSION=1.5.5
